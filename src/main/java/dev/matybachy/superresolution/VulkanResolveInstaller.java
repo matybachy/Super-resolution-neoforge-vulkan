@@ -13,6 +13,7 @@ public final class VulkanResolveInstaller {
     private static final String HOOK = "net.vulkanmod.vulkan.pass.DlssResolveHook";
     private static DlssFrameCoordinator coordinator;
     private static FrameInput frameInput;
+    private static Integer previousRenderScale;
 
     private VulkanResolveInstaller() {
     }
@@ -30,8 +31,11 @@ public final class VulkanResolveInstaller {
             coordinator = new DlssFrameCoordinator(config);
             if (!coordinator.upscaler().initialize(instance, physicalDevice, device, gipa, gdpa,
                     displayWidth, displayHeight)) {
+                coordinator.close();
+                coordinator = null;
                 return false;
             }
+            forceRenderScale(config);
 
             Class<?> hook = Class.forName(HOOK);
             Class<?> resolverType = Class.forName(HOOK + "$Resolver");
@@ -51,6 +55,7 @@ public final class VulkanResolveInstaller {
             return true;
         } catch (ReflectiveOperationException | RuntimeException error) {
             LOGGER.warning("DLSS VMR resolve hook unavailable: " + error.getMessage());
+            uninstall();
             return false;
         }
     }
@@ -69,6 +74,7 @@ public final class VulkanResolveInstaller {
 
     public static void uninstall() {
         if (coordinator != null) coordinator.close();
+        restoreRenderScale();
         coordinator = null;
         frameInput = null;
     }
@@ -87,5 +93,27 @@ public final class VulkanResolveInstaller {
                 type.getField("width").getInt(image),
                 type.getField("height").getInt(image),
                 type.getField("aspect").getInt(image));
+    }
+
+    private static void forceRenderScale(DlssConfig config) throws ReflectiveOperationException {
+        Class<?> initializer = Class.forName("net.vulkanmod.Initializer");
+        Object rendererConfig = initializer.getField("CONFIG").get(null);
+        var scale = rendererConfig.getClass().getField("renderScale");
+        if (previousRenderScale == null) previousRenderScale = scale.getInt(rendererConfig);
+        scale.setInt(rendererConfig, Math.max(50, Math.min(100,
+                Math.round(config.algorithm().renderScale() * 100.0F))));
+    }
+
+    private static void restoreRenderScale() {
+        if (previousRenderScale == null) return;
+        try {
+            Class<?> initializer = Class.forName("net.vulkanmod.Initializer");
+            Object rendererConfig = initializer.getField("CONFIG").get(null);
+            rendererConfig.getClass().getField("renderScale").setInt(rendererConfig, previousRenderScale);
+        } catch (ReflectiveOperationException | RuntimeException error) {
+            LOGGER.warning("Unable to restore VulkanMod render scale: " + error.getMessage());
+        } finally {
+            previousRenderScale = null;
+        }
     }
 }

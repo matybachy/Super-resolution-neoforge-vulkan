@@ -7,6 +7,8 @@ import org.lwjgl.vulkan.VkCommandBuffer;
 
 import java.util.logging.Logger;
 
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_GENERAL;
+
 /**
  * Optional replacement for the built-in scaled-framebuffer resolve. The
  * resolver is invoked after world rendering and before native-resolution GUI.
@@ -38,8 +40,12 @@ public final class DlssResolveHook {
         }
         try {
             targets.resize(displayWidth, displayHeight, color.width, color.height);
-            return value.resolve(Renderer.getCommandBuffer(), color, depth, targets.outputImage(),
+            boolean resolved = value.resolve(Renderer.getCommandBuffer(), color, depth, targets.outputImage(),
                     targets.motionVectorImage(), displayWidth, displayHeight);
+            if (resolved) {
+                targets.outputImage().setExternalLayout(VK_IMAGE_LAYOUT_GENERAL);
+            }
+            return resolved;
         } catch (RuntimeException error) {
             LOGGER.warning("DLSS render-target setup failed; using native-resolution resolve: "
                     + error.getMessage());

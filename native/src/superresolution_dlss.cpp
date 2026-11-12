@@ -22,6 +22,8 @@ bool g_motionInitialized = false;
 VkImage g_motionImage = VK_NULL_HANDLE;
 unsigned int g_width = 0;
 unsigned int g_height = 0;
+unsigned int g_targetWidth = 0;
+unsigned int g_targetHeight = 0;
 
 jlong field(JNIEnv *env, jobject object, const char *name) {
     jclass type = env->GetObjectClass(object);
@@ -35,6 +37,14 @@ jint intField(JNIEnv *env, jobject object, const char *name) {
     jclass type = env->GetObjectClass(object);
     jfieldID id = env->GetFieldID(type, name, "I");
     jint value = id ? env->GetIntField(object, id) : 0;
+    env->DeleteLocalRef(type);
+    return value;
+}
+
+float floatField(JNIEnv *env, jobject object, const char *name) {
+    jclass type = env->GetObjectClass(object);
+    jfieldID id = env->GetFieldID(type, name, "F");
+    jfloat value = id ? env->GetFloatField(object, id) : 0.0F;
     env->DeleteLocalRef(type);
     return value;
 }
@@ -73,6 +83,8 @@ void release() {
     }
     g_width = 0;
     g_height = 0;
+    g_targetWidth = 0;
+    g_targetHeight = 0;
 }
 
 bool createMotionPipeline() {
@@ -227,16 +239,21 @@ JNIEXPORT jint JNICALL Java_dev_matybachy_superresolution_DlssNativeBridge_evalu
     if (!g_parameters || !color || !depth || !motionVectors || !output || !frame) return -1;
     unsigned int width = static_cast<unsigned int>(intField(env, color, "width"));
     unsigned int height = static_cast<unsigned int>(intField(env, color, "height"));
-    if (!g_feature || width != g_width || height != g_height) {
+    unsigned int targetWidth = static_cast<unsigned int>(intField(env, output, "width"));
+    unsigned int targetHeight = static_cast<unsigned int>(intField(env, output, "height"));
+    if (!g_feature || width != g_width || height != g_height
+            || targetWidth != g_targetWidth || targetHeight != g_targetHeight) {
         release();
         if (NVSDK_NGX_FAILED(NVSDK_NGX_VULKAN_AllocateParameters(&g_parameters))) return -1;
         g_width = width;
         g_height = height;
+        g_targetWidth = targetWidth;
+        g_targetHeight = targetHeight;
         NVSDK_NGX_DLSS_Create_Params create{};
         create.Feature.InWidth = width;
         create.Feature.InHeight = height;
-        create.Feature.InTargetWidth = static_cast<unsigned int>(intField(env, output, "width"));
-        create.Feature.InTargetHeight = static_cast<unsigned int>(intField(env, output, "height"));
+        create.Feature.InTargetWidth = targetWidth;
+        create.Feature.InTargetHeight = targetHeight;
         create.InFeatureCreateFlags = NVSDK_NGX_DLSS_Feature_Flags_MVLowRes
                                       | NVSDK_NGX_DLSS_Feature_Flags_MVJittered;
         if (NVSDK_NGX_FAILED(NGX_VULKAN_CREATE_DLSS_EXT(
@@ -253,15 +270,15 @@ JNIEXPORT jint JNICALL Java_dev_matybachy_superresolution_DlssNativeBridge_evalu
     eval.pInDepth = &depthResource;
     eval.pInMotionVectors = &motionResource;
     eval.Feature.InSharpness = sharpness;
-    eval.InJitterOffsetX = 0.0F;
-    eval.InJitterOffsetY = 0.0F;
+    eval.InJitterOffsetX = floatField(env, frame, "jitterX");
+    eval.InJitterOffsetY = floatField(env, frame, "jitterY");
     eval.InRenderSubrectDimensions = {width, height};
     eval.InReset = boolField(env, frame, "resetHistory") ? 1 : 0;
-    eval.InMVScaleX = 1.0F;
-    eval.InMVScaleY = 1.0F;
-    eval.InPreExposure = 1.0F;
-    eval.InExposureScale = 1.0F;
-    eval.InFrameTimeDeltaInMsec = 1000.0F * 0.016F;
+    eval.InMVScaleX = floatField(env, frame, "motionVectorScaleX");
+    eval.InMVScaleY = floatField(env, frame, "motionVectorScaleY");
+    eval.InPreExposure = floatField(env, frame, "preExposure");
+    eval.InExposureScale = floatField(env, frame, "exposureScale");
+    eval.InFrameTimeDeltaInMsec = 1000.0F * floatField(env, frame, "frameTimeSeconds");
     return static_cast<jint>(NGX_VULKAN_EVALUATE_DLSS_EXT(
             reinterpret_cast<VkCommandBuffer>(commandBuffer), g_feature, g_parameters, &eval));
 }
