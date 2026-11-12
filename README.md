@@ -29,6 +29,10 @@ the camera-only velocity path at the Opal Compat renderer seam. Entity and
 animated-object motion is not represented yet and may ghost during temporal
 accumulation.
 
+When the DLSS JVM property is enabled, VMR registers the NGX Vulkan device
+extensions before device creation, Opal applies a Halton camera jitter to the
+projection, and the same jitter is passed to NGX.
+
 The native bridge is implemented in `native/src/superresolution_dlss.cpp`.
 NVIDIA NGX headers, libraries, project identifiers, and DLLs are not
 redistributed. The renderer integration calls this core after the world pass,

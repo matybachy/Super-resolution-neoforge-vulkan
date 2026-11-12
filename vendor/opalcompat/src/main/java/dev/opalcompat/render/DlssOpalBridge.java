@@ -1,6 +1,7 @@
 package dev.opalcompat.render;
 
 import java.util.logging.Logger;
+import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 
 /**
@@ -14,8 +15,20 @@ public final class DlssOpalBridge {
 	private static boolean installed;
 	private static Object pass;
 	private static boolean lookedUp;
+	private static int frameIndex;
+	private static float jitterX;
+	private static float jitterY;
 
 	private DlssOpalBridge() {
+	}
+
+	public static void applyJitter(Matrix4f projection, int width, int height) {
+		if (!Boolean.getBoolean("superresolution.dlss") || width <= 0 || height <= 0) return;
+		frameIndex++;
+		jitterX = halton(frameIndex, 2) - 0.5F;
+		jitterY = halton(frameIndex, 3) - 0.5F;
+		projection.m20(projection.m20() + (2.0F * jitterX) / width);
+		projection.m21(projection.m21() + (2.0F * jitterY) / height);
 	}
 
 	public static void beginFrame(Matrix4fc modelView, Matrix4fc projection) {
@@ -33,31 +46,31 @@ public final class DlssOpalBridge {
 			Class<?> input = Class.forName("dev.matybachy.superresolution.FrameInput");
 			Object frame = input.getConstructor(float.class, float.class, float.class, float.class,
 					float.class, float.class, float.class, boolean.class, int.class, int.class,
-					int.class, int.class).newInstance(0.0F, 0.0F, (float) width, (float) height,
+					int.class, int.class).newInstance(jitterX, jitterY, (float) width, (float) height,
 					1.0F, 1.0F, 0.016F, false, width, height, width, height);
 			installer.getMethod("setFrameInput", input).invoke(null, frame);
 		} catch (ReflectiveOperationException | RuntimeException error) {
 			LOGGER.warning("DLSS camera motion-vector bridge disabled: " + error.getMessage());
 			pass = null;
 		}
+	}
 
-		private static void install() {
-			if (installed) return;
-			try {
-				Class<?> installer = Class.forName(INSTALLER);
-				Class<?> configType = Class.forName("dev.matybachy.superresolution.DlssConfig");
-				Class<?> algorithmType = Class.forName("dev.matybachy.superresolution.DlssAlgorithm");
-				Object algorithm = Enum.valueOf((Class) algorithmType,
-						System.getProperty("superresolution.dlss.quality", "QUALITY"));
-				Object config = configType.getConstructor(boolean.class, algorithmType, float.class)
-						.newInstance(true, algorithm, 0.2F);
-				int width = net.minecraft.client.Minecraft.getInstance().getWindow().getWidth();
-				int height = net.minecraft.client.Minecraft.getInstance().getWindow().getHeight();
-				installed = (boolean) installer.getMethod("install", configType, int.class, int.class)
-						.invoke(null, config, width, height);
-			} catch (ReflectiveOperationException | RuntimeException error) {
-				LOGGER.warning("DLSS automatic bootstrap unavailable: " + error.getMessage());
-			}
+	private static void install() {
+		if (installed) return;
+		try {
+			Class<?> installer = Class.forName(INSTALLER);
+			Class<?> configType = Class.forName("dev.matybachy.superresolution.DlssConfig");
+			Class<?> algorithmType = Class.forName("dev.matybachy.superresolution.DlssAlgorithm");
+			Object algorithm = Enum.valueOf((Class) algorithmType,
+					System.getProperty("superresolution.dlss.quality", "QUALITY"));
+			Object config = configType.getConstructor(boolean.class, algorithmType, float.class)
+					.newInstance(true, algorithm, 0.2F);
+			int width = net.minecraft.client.Minecraft.getInstance().getWindow().getWidth();
+			int height = net.minecraft.client.Minecraft.getInstance().getWindow().getHeight();
+			installed = (boolean) installer.getMethod("install", configType, int.class, int.class)
+					.invoke(null, config, width, height);
+		} catch (ReflectiveOperationException | RuntimeException error) {
+			LOGGER.warning("DLSS automatic bootstrap unavailable: " + error.getMessage());
 		}
 	}
 
@@ -96,5 +109,16 @@ public final class DlssOpalBridge {
 			}
 		}
 		return out;
+	}
+
+	private static float halton(int index, int base) {
+		float result = 0.0F;
+		float fraction = 1.0F / base;
+		while (index > 0) {
+			result += (index % base) * fraction;
+			index /= base;
+			fraction /= base;
+		}
+		return result;
 	}
 }

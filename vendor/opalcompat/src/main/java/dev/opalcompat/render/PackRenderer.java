@@ -460,6 +460,8 @@ public final class PackRenderer implements AutoCloseable {
 		drawingLevel = true;
 		solidHandIssued = false;
 		handsHandled = false;
+		DlssOpalBridge.applyJitter(projection, net.minecraft.client.Minecraft.getInstance().getWindow().getWidth(),
+				net.minecraft.client.Minecraft.getInstance().getWindow().getHeight());
 		LevelCapture.capture(modelView, projection);
 		DlssOpalBridge.beginFrame(modelView, projection);
 		ensureLoaded();
