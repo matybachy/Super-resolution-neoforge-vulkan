@@ -69,6 +69,11 @@ public final class DlssRenderTargets implements AutoCloseable {
         return active;
     }
 
+    public static void closeActive() {
+        DlssRenderTargets targets = active;
+        if (targets != null) targets.close();
+    }
+
     public VulkanImage outputImage() {
         return output;
     }

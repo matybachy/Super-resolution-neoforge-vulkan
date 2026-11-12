@@ -218,6 +218,7 @@ public class DefaultMainPass implements MainPass {
 
     @Override public void onResize() {
         if (this.targets == null) throw new IllegalStateException("Main pass is closed");
+        DlssRenderTargets.closeActive();
         MainPassTargets<Target, Passes> replacement = createTargets();
         RenderPass replacementPresent;
         try {
@@ -238,6 +239,7 @@ public class DefaultMainPass implements MainPass {
     @Override public void cleanUp() {
         MainPassTargets<Target, Passes> previous = this.targets;
         if (previous == null) return;
+        DlssRenderTargets.closeActive();
         RenderPass previousPresent = this.presentRenderPass;
         this.targets = null;
         this.presentRenderPass = null;

@@ -79,6 +79,13 @@ public final class VulkanResolveInstaller {
     }
 
     public static void uninstall() {
+        try {
+            Class<?> hook = Class.forName(HOOK);
+            Class<?> resolverType = Class.forName(HOOK + "$Resolver");
+            hook.getMethod("install", resolverType).invoke(null, new Object[]{null});
+        } catch (ReflectiveOperationException | RuntimeException error) {
+            LOGGER.fine("DLSS VMR resolve hook could not be cleared: " + error.getMessage());
+        }
         if (coordinator != null) coordinator.close();
         restoreRenderScale();
         coordinator = null;
