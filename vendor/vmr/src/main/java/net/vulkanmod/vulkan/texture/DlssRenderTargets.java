@@ -65,6 +65,18 @@ public final class DlssRenderTargets implements AutoCloseable {
         return targets == null ? null : targets.motionVectors;
     }
 
+    public static DlssRenderTargets active() {
+        return active;
+    }
+
+    public VulkanImage outputImage() {
+        return output;
+    }
+
+    public VulkanImage motionVectorImage() {
+        return motionVectors;
+    }
+
     private static Resource image(VulkanImage image) {
         if (image == null) throw new IllegalStateException("DLSS targets are not allocated");
         return new Resource(image.getId(), image.getImageView(), image.format,

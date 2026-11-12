@@ -29,11 +29,12 @@ the camera-only velocity path at the Opal Compat renderer seam. Entity and
 animated-object motion is not represented yet and may ghost during temporal
 accumulation.
 
-The native bridge is intentionally only a JNI declaration. NVIDIA NGX headers,
-libraries, project identifiers, and DLLs are not redistributed. The renderer
-integration must call this core after the world pass and before
-native-resolution GUI rendering, providing actual Vulkan image views and a
-recording command buffer.
+The native bridge is implemented in `native/src/superresolution_dlss.cpp`.
+NVIDIA NGX headers, libraries, project identifiers, and DLLs are not
+redistributed. The renderer integration calls this core after the world pass,
+writes camera-only motion vectors from the scaled depth buffer, evaluates DLSS
+into a dedicated display-resolution target, and presents that target before
+native-resolution GUI rendering.
 
 `VulkanExtensionRegistrar` targets the added VMR
 `VulkanExtensionHooks` seam. NGX-discovered instance/device requirements must

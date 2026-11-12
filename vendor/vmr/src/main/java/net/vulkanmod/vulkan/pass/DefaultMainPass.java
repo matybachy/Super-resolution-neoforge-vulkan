@@ -297,8 +297,9 @@ public class DefaultMainPass implements MainPass {
         VkCommandBuffer commandBuffer = Renderer.getCommandBuffer();
         Renderer.getInstance().endRenderPass(commandBuffer);
         if (DlssResolveHook.resolve(mainFramebuffer.getColorAttachment(), mainFramebuffer.getDepthAttachment(),
-                swapChain.getColorAttachment(), swapChain.getColorAttachment().width,
+                swapChain.getColorAttachment().width,
                 swapChain.getColorAttachment().height)) {
+            resolveImageToSwapchain(commandBuffer, DlssResolveHook.outputImage(), true);
             this.renderScaleResolvedThisFrame = true;
             this.targets.resolveForGui();
             selectTarget();
@@ -311,14 +312,18 @@ public class DefaultMainPass implements MainPass {
     }
 
     private void resolveScaledFramebufferToSwapchain(VkCommandBuffer commandBuffer, boolean keepRendering) {
+        resolveImageToSwapchain(commandBuffer, this.mainFramebuffer.getColorAttachment(), keepRendering);
+    }
+
+    private void resolveImageToSwapchain(VkCommandBuffer commandBuffer, VulkanImage source, boolean keepRendering) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            this.mainFramebuffer.getColorAttachment().transitionImageLayout(stack, commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            source.transitionImageLayout(stack, commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             this.swapChain.getColorAttachment().transitionImageLayout(stack, commandBuffer, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
             this.swapChain.beginRenderPass(commandBuffer, this.presentRenderPass, stack);
             Renderer.clearViewportScale();
             Renderer.resetViewport();
             Renderer.resetScissor();
-            VTextureSelector.bindTexture(this.mainFramebuffer.getColorAttachment());
+            VTextureSelector.bindTexture(source);
             DrawUtil.blitRenderScaleToScreen();
 
             if (!keepRendering) {

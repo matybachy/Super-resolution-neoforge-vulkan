@@ -74,7 +74,8 @@ public final class NativeDlssUpscaler implements DlssUpscaler {
             return fail("frame dimensions do not match the initialized DLSS output");
         }
         try {
-            int result = DlssNativeBridge.evaluate(commandBuffer, color, depth, motionVectors, output, input);
+            int result = DlssNativeBridge.evaluate(commandBuffer, color, depth, motionVectors, output, input,
+                    config.sharpness());
             if (result != 0) {
                 return fail("DLSS evaluation failed (" + result + ")");
             }

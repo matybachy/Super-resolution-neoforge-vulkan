@@ -16,7 +16,8 @@ final class DlssNativeBridge {
                                  long getInstanceProcAddr, long getDeviceProcAddr);
 
     static native int evaluate(long commandBuffer, DlssImage color, DlssImage depth,
-                               DlssImage motionVectors, DlssImage output, FrameInput input);
+                               DlssImage motionVectors, DlssImage output, FrameInput input,
+                               float sharpness);
 
     static native int recordMotionVectors(long commandBuffer, DlssImage depth, DlssImage motionVectors,
                                           float[] inverseCurrentViewProjection,

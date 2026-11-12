@@ -23,4 +23,9 @@ public record FrameInput(
             throw new IllegalArgumentException("frame values must be finite");
         }
     }
+
+    public FrameInput withRenderDimensions(int width, int height) {
+        return new FrameInput(jitterX, jitterY, motionVectorScaleX, motionVectorScaleY, preExposure,
+                exposureScale, frameTimeSeconds, resetHistory, width, height, displayWidth, displayHeight);
+    }
 }

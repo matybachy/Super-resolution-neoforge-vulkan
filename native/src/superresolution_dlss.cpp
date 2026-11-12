@@ -223,7 +223,7 @@ JNIEXPORT jint JNICALL Java_dev_matybachy_superresolution_DlssNativeBridge_recor
 
 JNIEXPORT jint JNICALL Java_dev_matybachy_superresolution_DlssNativeBridge_evaluate(
         JNIEnv *env, jclass, jlong commandBuffer, jobject color, jobject depth,
-        jobject motionVectors, jobject output, jobject frame) {
+        jobject motionVectors, jobject output, jobject frame, jfloat sharpness) {
     if (!g_parameters || !color || !depth || !motionVectors || !output || !frame) return -1;
     unsigned int width = static_cast<unsigned int>(intField(env, color, "width"));
     unsigned int height = static_cast<unsigned int>(intField(env, color, "height"));
@@ -252,7 +252,7 @@ JNIEXPORT jint JNICALL Java_dev_matybachy_superresolution_DlssNativeBridge_evalu
     eval.Feature.pInOutput = &outputResource;
     eval.pInDepth = &depthResource;
     eval.pInMotionVectors = &motionResource;
-    eval.Feature.InSharpness = 0.0F;
+    eval.Feature.InSharpness = sharpness;
     eval.InJitterOffsetX = 0.0F;
     eval.InJitterOffsetY = 0.0F;
     eval.InRenderSubrectDimensions = {width, height};

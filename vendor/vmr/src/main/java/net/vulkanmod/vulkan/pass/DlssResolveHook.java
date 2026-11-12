@@ -25,11 +25,21 @@ public final class DlssResolveHook {
         resolver = value;
     }
 
-    public static boolean resolve(VulkanImage color, VulkanImage depth, VulkanImage output,
+    public static boolean resolve(VulkanImage color, VulkanImage depth,
                                   int displayWidth, int displayHeight) {
         Resolver value = resolver;
-        return value != null && value.resolve(Renderer.getCommandBuffer(), color, depth, output,
-                DlssRenderTargets.activeMotionVectorImage(),
-                displayWidth, displayHeight);
+        if (value == null) return false;
+        DlssRenderTargets targets = DlssRenderTargets.active();
+        if (targets == null) {
+            targets = new DlssRenderTargets();
+        }
+        targets.resize(displayWidth, displayHeight, color.width, color.height);
+        return value.resolve(Renderer.getCommandBuffer(), color, depth, targets.outputImage(),
+                targets.motionVectorImage(), displayWidth, displayHeight);
+    }
+
+    public static VulkanImage outputImage() {
+        DlssRenderTargets targets = DlssRenderTargets.active();
+        return targets == null ? null : targets.outputImage();
     }
 }
