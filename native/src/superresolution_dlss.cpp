@@ -2,6 +2,7 @@
 #include <vulkan/vulkan.h>
 
 #include "nvsdk_ngx_helpers_vk.h"
+#include "camera_motion_spv.h"
 
 #include <cstdlib>
 #include <cwchar>
@@ -10,6 +11,15 @@
 namespace {
 NVSDK_NGX_Parameter *g_parameters = nullptr;
 NVSDK_NGX_Handle *g_feature = nullptr;
+VkDevice g_device = VK_NULL_HANDLE;
+VkPipeline g_motionPipeline = VK_NULL_HANDLE;
+VkPipelineLayout g_motionPipelineLayout = VK_NULL_HANDLE;
+VkDescriptorSetLayout g_motionSetLayout = VK_NULL_HANDLE;
+VkDescriptorPool g_motionDescriptorPool = VK_NULL_HANDLE;
+VkDescriptorSet g_motionDescriptorSet = VK_NULL_HANDLE;
+VkSampler g_motionSampler = VK_NULL_HANDLE;
+bool g_motionInitialized = false;
+VkImage g_motionImage = VK_NULL_HANDLE;
 unsigned int g_width = 0;
 unsigned int g_height = 0;
 
@@ -64,6 +74,80 @@ void release() {
     g_width = 0;
     g_height = 0;
 }
+
+bool createMotionPipeline() {
+    VkDescriptorSetLayoutBinding bindings[2]{};
+    bindings[0].binding = 0;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[0].descriptorCount = 1;
+    bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    bindings[1].binding = 1;
+    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    bindings[1].descriptorCount = 1;
+    bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    VkDescriptorSetLayoutCreateInfo layoutInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+    layoutInfo.bindingCount = 2;
+    layoutInfo.pBindings = bindings;
+    if (vkCreateDescriptorSetLayout(g_device, &layoutInfo, nullptr, &g_motionSetLayout) != VK_SUCCESS) return false;
+    VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT, 0, 192};
+    VkPipelineLayoutCreateInfo pipelineLayout{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+    pipelineLayout.setLayoutCount = 1;
+    pipelineLayout.pSetLayouts = &g_motionSetLayout;
+    pipelineLayout.pushConstantRangeCount = 1;
+    pipelineLayout.pPushConstantRanges = &push;
+    if (vkCreatePipelineLayout(g_device, &pipelineLayout, nullptr, &g_motionPipelineLayout) != VK_SUCCESS) return false;
+    VkShaderModuleCreateInfo moduleInfo{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
+    moduleInfo.codeSize = camera_motion_comp_spv_len;
+    moduleInfo.pCode = reinterpret_cast<const uint32_t *>(camera_motion_comp_spv);
+    VkShaderModule module = VK_NULL_HANDLE;
+    if (vkCreateShaderModule(g_device, &moduleInfo, nullptr, &module) != VK_SUCCESS) return false;
+    VkComputePipelineCreateInfo pipelineInfo{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
+    pipelineInfo.stage = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
+    pipelineInfo.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    pipelineInfo.stage.module = module;
+    pipelineInfo.stage.pName = "main";
+    pipelineInfo.layout = g_motionPipelineLayout;
+    VkResult result = vkCreateComputePipelines(g_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &g_motionPipeline);
+    vkDestroyShaderModule(g_device, module, nullptr);
+    if (result != VK_SUCCESS) return false;
+    VkSamplerCreateInfo sampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+    sampler.magFilter = VK_FILTER_NEAREST;
+    sampler.minFilter = VK_FILTER_NEAREST;
+    sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    sampler.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    sampler.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    sampler.maxLod = 1.0F;
+    if (vkCreateSampler(g_device, &sampler, nullptr, &g_motionSampler) != VK_SUCCESS) return false;
+    VkDescriptorPoolSize sizes[2]{{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1},
+                                  {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}};
+    VkDescriptorPoolCreateInfo pool{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    pool.maxSets = 1;
+    pool.poolSizeCount = 2;
+    pool.pPoolSizes = sizes;
+    if (vkCreateDescriptorPool(g_device, &pool, nullptr, &g_motionDescriptorPool) != VK_SUCCESS) return false;
+    VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+    alloc.descriptorPool = g_motionDescriptorPool;
+    alloc.descriptorSetCount = 1;
+    alloc.pSetLayouts = &g_motionSetLayout;
+    return vkAllocateDescriptorSets(g_device, &alloc, &g_motionDescriptorSet) == VK_SUCCESS;
+}
+
+void destroyMotionPipeline() {
+    if (g_motionSampler) vkDestroySampler(g_device, g_motionSampler, nullptr);
+    if (g_motionDescriptorPool) vkDestroyDescriptorPool(g_device, g_motionDescriptorPool, nullptr);
+    if (g_motionPipeline) vkDestroyPipeline(g_device, g_motionPipeline, nullptr);
+    if (g_motionPipelineLayout) vkDestroyPipelineLayout(g_device, g_motionPipelineLayout, nullptr);
+    if (g_motionSetLayout) vkDestroyDescriptorSetLayout(g_device, g_motionSetLayout, nullptr);
+    g_motionSampler = VK_NULL_HANDLE;
+    g_motionDescriptorPool = VK_NULL_HANDLE;
+    g_motionPipeline = VK_NULL_HANDLE;
+    g_motionPipelineLayout = VK_NULL_HANDLE;
+    g_motionSetLayout = VK_NULL_HANDLE;
+    g_motionDescriptorSet = VK_NULL_HANDLE;
+    g_motionInitialized = false;
+    g_motionImage = VK_NULL_HANDLE;
+}
 }
 
 extern "C" {
@@ -83,7 +167,58 @@ JNIEXPORT jint JNICALL Java_dev_matybachy_superresolution_DlssNativeBridge_initi
             reinterpret_cast<PFN_vkGetInstanceProcAddr>(getInstanceProcAddr),
             reinterpret_cast<PFN_vkGetDeviceProcAddr>(getDeviceProcAddr));
     if (NVSDK_NGX_FAILED(result)) return static_cast<jint>(result);
+    g_device = reinterpret_cast<VkDevice>(device);
+    if (!createMotionPipeline()) {
+        NVSDK_NGX_VULKAN_Shutdown1(VK_NULL_HANDLE);
+        g_device = VK_NULL_HANDLE;
+        return -2;
+    }
     return static_cast<jint>(NVSDK_NGX_VULKAN_AllocateParameters(&g_parameters));
+}
+
+JNIEXPORT jint JNICALL Java_dev_matybachy_superresolution_DlssNativeBridge_recordMotionVectors(
+        JNIEnv *env, jclass, jlong commandBuffer, jobject depth, jobject motion,
+        jfloatArray inverseCurrent, jfloatArray previous, jfloatArray current) {
+    if (!g_motionPipeline || !depth || !motion || !inverseCurrent || !previous || !current) return -1;
+    jsize length = env->GetArrayLength(inverseCurrent);
+    if (length != 16 || env->GetArrayLength(previous) != 16 || env->GetArrayLength(current) != 16) return -1;
+    float matrices[48];
+    env->GetFloatArrayRegion(inverseCurrent, 0, 16, matrices);
+    env->GetFloatArrayRegion(previous, 0, 16, matrices + 16);
+    env->GetFloatArrayRegion(current, 0, 16, matrices + 32);
+    VkImage motionImage = reinterpret_cast<VkImage>(field(env, motion, "image"));
+    bool sameMotionImage = g_motionInitialized && g_motionImage == motionImage;
+    VkDescriptorImageInfo depthInfo{g_motionSampler, reinterpret_cast<VkImageView>(field(env, depth, "imageView")),
+                                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
+    VkDescriptorImageInfo motionInfo{VK_NULL_HANDLE, reinterpret_cast<VkImageView>(field(env, motion, "imageView")),
+                                     VK_IMAGE_LAYOUT_GENERAL};
+    VkWriteDescriptorSet writes[2]{};
+    writes[0] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr, g_motionDescriptorSet, 0, 0, 1,
+                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &depthInfo, nullptr, nullptr};
+    writes[1] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr, g_motionDescriptorSet, 1, 0, 1,
+                 VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &motionInfo, nullptr, nullptr};
+    vkUpdateDescriptorSets(g_device, 2, writes, 0, nullptr);
+    VkCommandBuffer command = reinterpret_cast<VkCommandBuffer>(commandBuffer);
+    VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+    barrier.srcAccessMask = sameMotionImage ? VK_ACCESS_SHADER_WRITE_BIT : 0;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.oldLayout = sameMotionImage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_UNDEFINED;
+    barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+    barrier.image = motionImage;
+    barrier.subresourceRange.aspectMask = static_cast<VkImageAspectFlags>(intField(env, motion, "aspectMask"));
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.layerCount = 1;
+    vkCmdPipelineBarrier(command, sameMotionImage ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, g_motionPipeline);
+    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE, g_motionPipelineLayout, 0, 1,
+                            &g_motionDescriptorSet, 0, nullptr);
+    vkCmdPushConstants(command, g_motionPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(matrices), matrices);
+    vkCmdDispatch(command, (intField(env, motion, "width") + 7) / 8,
+                  (intField(env, motion, "height") + 7) / 8, 1);
+    g_motionInitialized = true;
+    g_motionImage = motionImage;
+    return 0;
 }
 
 JNIEXPORT jint JNICALL Java_dev_matybachy_superresolution_DlssNativeBridge_evaluate(
@@ -136,6 +271,7 @@ JNIEXPORT void JNICALL Java_dev_matybachy_superresolution_DlssNativeBridge_reset
 
 JNIEXPORT void JNICALL Java_dev_matybachy_superresolution_DlssNativeBridge_shutdown(JNIEnv *, jclass) {
     release();
+    destroyMotionPipeline();
     NVSDK_NGX_VULKAN_Shutdown1(VK_NULL_HANDLE);
 }
 }

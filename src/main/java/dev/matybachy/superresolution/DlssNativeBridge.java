@@ -18,6 +18,11 @@ final class DlssNativeBridge {
     static native int evaluate(long commandBuffer, DlssImage color, DlssImage depth,
                                DlssImage motionVectors, DlssImage output, FrameInput input);
 
+    static native int recordMotionVectors(long commandBuffer, DlssImage depth, DlssImage motionVectors,
+                                          float[] inverseCurrentViewProjection,
+                                          float[] previousViewProjection,
+                                          float[] currentViewProjection);
+
     static native void reset();
 
     static native void shutdown();

@@ -27,14 +27,22 @@ if(NOT GLSLANG_VALIDATOR)
     message(FATAL_ERROR "glslangValidator is required to compile native/shaders/camera_motion.comp")
 endif()
 set(CAMERA_MOTION_SPV "${CMAKE_CURRENT_BINARY_DIR}/camera_motion.comp.spv")
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set(CAMERA_MOTION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/camera_motion_spv.h")
 add_custom_command(
         OUTPUT "${CAMERA_MOTION_SPV}"
         COMMAND "${GLSLANG_VALIDATOR}" -V
         "${CMAKE_CURRENT_SOURCE_DIR}/shaders/camera_motion.comp"
         -o "${CAMERA_MOTION_SPV}"
         DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/camera_motion.comp")
-add_custom_target(superresolution_dlss_shaders DEPENDS "${CAMERA_MOTION_SPV}")
+add_custom_command(
+        OUTPUT "${CAMERA_MOTION_HEADER}"
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/embed_spirv.py"
+        "${CAMERA_MOTION_SPV}" "${CAMERA_MOTION_HEADER}"
+        DEPENDS "${CAMERA_MOTION_SPV}" "${CMAKE_CURRENT_SOURCE_DIR}/embed_spirv.py")
+add_custom_target(superresolution_dlss_shaders DEPENDS "${CAMERA_MOTION_HEADER}")
 add_dependencies(superresolution_dlss superresolution_dlss_shaders)
+target_include_directories(superresolution_dlss PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 if(WIN32)
     set_target_properties(superresolution_dlss PROPERTIES OUTPUT_NAME "superresolution_dlss")

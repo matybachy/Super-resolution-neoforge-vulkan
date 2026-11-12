@@ -84,6 +84,23 @@ public final class NativeDlssUpscaler implements DlssUpscaler {
         }
     }
 
+    public boolean recordMotionVectors(long commandBuffer, DlssImage depth, DlssImage motionVectors,
+                                       float[] inverseCurrentViewProjection,
+                                       float[] previousViewProjection,
+                                       float[] currentViewProjection) {
+        if (!initialized || depth == null || motionVectors == null) {
+            return fail("DLSS motion-vector resources are unavailable");
+        }
+        try {
+            int result = DlssNativeBridge.recordMotionVectors(commandBuffer, depth, motionVectors,
+                    inverseCurrentViewProjection, previousViewProjection, currentViewProjection);
+            if (result != 0) return fail("camera motion-vector pass failed (" + result + ")");
+            return true;
+        } catch (LinkageError error) {
+            return fail("DLSS native bridge is unavailable");
+        }
+    }
+
     @Override
     public void resetHistory() {
         if (initialized) {

@@ -43,6 +43,7 @@ public final class VulkanResolveInstaller {
                         DlssImage depth = image(args[2]);
                         DlssImage output = image(args[3]);
                         DlssImage motion = image(args[4]);
+                        if (!coordinator.recordMotionVectors(commandBuffer, depth, motion)) return false;
                         return coordinator.evaluateWorld(commandBuffer, color, depth, motion, output, frameInput);
                     });
             hook.getMethod("install", resolverType).invoke(null, resolver);

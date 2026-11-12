@@ -39,6 +39,14 @@ public final class DlssFrameCoordinator implements AutoCloseable {
         return upscaler.evaluate(commandBuffer, color, depth, motionVectors, output, input);
     }
 
+    public boolean recordMotionVectors(long commandBuffer, DlssImage depth, DlssImage motionImage) {
+        if (!this.motionVectors.initialized()) return false;
+        return upscaler.recordMotionVectors(commandBuffer, depth, motionImage,
+                this.motionVectors.currentInverseViewProjection(),
+                this.motionVectors.previousViewProjection(),
+                this.motionVectors.currentViewProjection());
+    }
+
     public void endWorldFrame() {
         motionVectors.endFrame();
     }
