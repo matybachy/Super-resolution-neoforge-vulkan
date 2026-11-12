@@ -1,0 +1,85 @@
+/*
+ * Super Resolution
+ * Copyright (c) 2026. 187J3X1-114514
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package io.homo.superresolution.core.graphics.vulkan;
+
+import io.homo.superresolution.core.graphics.impl.command.CommandBufferBehavior;
+
+public class VulkanCommandBufferRing {
+    private final int bufferCount;
+    private final VulkanCommandBuffer[] commandBuffers;
+    private final VulkanCommandPool commandPool;
+    private boolean initialized;
+    private int cursor = 0;
+    private int acquiredIndex = -1;
+
+    public VulkanCommandBufferRing(int bufferCount) {
+        this(bufferCount, null);
+    }
+
+    public VulkanCommandBufferRing(int bufferCount, VulkanCommandPool commandPool) {
+        if (bufferCount <= 0) {
+            throw new IllegalArgumentException("initialBufferCount must be greater than 0");
+        }
+        this.bufferCount = bufferCount;
+        this.commandBuffers = new VulkanCommandBuffer[bufferCount];
+        this.commandPool = commandPool;
+        initialized = false;
+    }
+
+    public VulkanCommandBuffer acquire(VulkanDevice device) {
+        if (!initialized) {
+            for (int i = 0; i < bufferCount; i++) {
+                VulkanCommandPool pool = commandPool != null
+                        ? commandPool
+                        : (VulkanCommandPool) device.defaultCommandPool();
+                commandBuffers[i] = pool.createCommandBuffer(CommandBufferBehavior.ReusableSequential);
+            }
+            initialized = true;
+        }
+
+        VulkanCommandBuffer commandBuffer = commandBuffers[cursor];
+        commandBuffer.waitForFence();
+        acquiredIndex = cursor;
+        cursor = (cursor + 1) % bufferCount;
+        return commandBuffer;
+    }
+
+    public int acquiredIndex() {
+        return acquiredIndex;
+    }
+
+    public int bufferCount() {
+        return bufferCount;
+    }
+
+    public void destroy() {
+        for (int i = 0; i < bufferCount; i++) {
+            VulkanCommandBuffer commandBuffer = commandBuffers[i];
+            if (commandBuffer == null) {
+                continue;
+            }
+            commandBuffer.waitForFence();
+            commandBuffer.destroy();
+            commandBuffers[i] = null;
+        }
+        cursor = 0;
+        acquiredIndex = -1;
+        initialized = false;
+    }
+}

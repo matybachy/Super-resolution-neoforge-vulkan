@@ -1,0 +1,86 @@
+/*
+ * Super Resolution
+ * Copyright (c) 2025-2026. 187J3X1-114514
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package io.homo.superresolution.core.gui.widgets.label;
+
+import io.homo.superresolution.core.gui.core.WidgetStyle;
+import io.homo.superresolution.core.gui.core.backends.render.RenderContext;
+import io.homo.superresolution.core.utils.Color;
+
+public class MaterialLabelStyle extends WidgetStyle<MaterialLabelStyle> {
+    private Color color;
+    private float fontSize = 14f;
+    private float lineHeight = 15f;
+    private boolean sizeToContent = false;
+    private boolean wrap = false;
+    private float weight = RenderContext.DEFAULT_FONT_WEIGHT;
+
+    public float weight() {
+        return weight;
+    }
+
+    public MaterialLabelStyle weight(float weight) {
+        this.weight = weight;
+        return this;
+    }
+
+    public boolean wrap() {
+        return wrap;
+    }
+
+    public MaterialLabelStyle wrap(boolean wrap) {
+        this.wrap = wrap;
+        return this;
+    }
+
+    public float lineHeight() {
+        return lineHeight;
+    }
+
+    public MaterialLabelStyle lineHeight(float lineHeight) {
+        this.lineHeight = lineHeight;
+        return this;
+    }
+
+    public Color color() {
+        return color;
+    }
+
+    public MaterialLabelStyle color(Color color) {
+        this.color = color;
+        return this;
+    }
+
+    public float fontSize() {
+        return fontSize;
+    }
+
+    public MaterialLabelStyle fontSize(float fontSize) {
+        this.fontSize = fontSize;
+        return this;
+    }
+
+    public boolean sizeToContent() {
+        return sizeToContent;
+    }
+
+    public MaterialLabelStyle sizeToContent(boolean sizeToContent) {
+        this.sizeToContent = sizeToContent;
+        return this;
+    }
+}

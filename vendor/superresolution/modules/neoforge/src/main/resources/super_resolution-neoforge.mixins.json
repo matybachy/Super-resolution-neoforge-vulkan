@@ -1,0 +1,15 @@
+{
+    "required": true,
+    "package": "io.homo.superresolution.neoforge.mixin",
+    "compatibilityLevel": "JAVA_21",
+    "minVersion": "0.8",
+    "client": [
+        "neoforge.FuckingValidation1218Mixin",
+        "neoforge.FuckingValidationMixin"
+    ],
+    "mixins": [
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}

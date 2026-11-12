@@ -1,0 +1,196 @@
+/*
+ * Super Resolution
+ * Copyright (c) 2025-2026. 187J3X1-114514
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package io.homo.superresolution.core.gui.widgets.menu;
+
+import io.homo.superresolution.core.gui.MaterialElevation;
+import io.homo.superresolution.core.gui.core.AbstractWidget;
+import io.homo.superresolution.core.gui.core.UIInputState;
+import io.homo.superresolution.core.gui.core.WidgetStyle;
+import io.homo.superresolution.core.gui.core.backends.render.RenderContext;
+import io.homo.superresolution.core.gui.core.impl.Rectangle;
+import io.homo.superresolution.core.gui.core.layout.ILayoutElement;
+import io.homo.superresolution.core.gui.widgets.MaterialContainerWidget;
+import io.homo.superresolution.core.utils.Color;
+import io.homo.superresolution.thirdparty.yoga.appliedenergistics.yoga.YogaEdge;
+import io.homo.superresolution.thirdparty.yoga.appliedenergistics.yoga.YogaFlexDirection;
+import io.homo.superresolution.thirdparty.yoga.appliedenergistics.yoga.YogaGutter;
+
+public class MaterialMenuGroup extends MaterialContainerWidget<MaterialMenuGroup> {
+
+    private final MaterialMenu menu;
+    private float expandProgress = 1f;
+
+    public MaterialMenuGroup(MaterialMenu menu) {
+        this.menu = menu;
+        this.style = null;
+        layout().setFlexDirection(YogaFlexDirection.COLUMN);
+        updateSize();
+    }
+
+    public static MaterialMenuGroup create(MaterialMenu menu) {
+        return new MaterialMenuGroup(menu);
+    }
+
+    public void updateSize() {
+        layout().setWidthPercent(100);
+        layout().setPadding(YogaEdge.ALL, 4);
+        layout().setGap(YogaGutter.ROW, 4);
+    }
+
+    @Override
+    public MaterialMenuStyle style() {
+        return this.menu.style();
+    }
+
+    @Override
+    public void clearHover() {
+        super.clearHover();
+        for (ILayoutElement child : getChildren()) {
+            if (child instanceof AbstractWidget<?> widget) {
+                widget.clearHover();
+            }
+        }
+    }
+
+    @Override
+    public boolean managesChildRendering() {
+        return true;
+    }
+
+    public float computeContentWidth(RenderContext ctx) {
+        float max = 0;
+        for (ILayoutElement child : getChildren()) {
+            if (child instanceof MaterialMenuItem item) {
+                max = Math.max(max, item.computeContentWidth(ctx));
+            }
+        }
+        return max;
+    }
+
+    @Override
+    protected void init() {
+
+    }
+
+    @Override
+    public void layouting(RenderContext ctx) {
+        updateSize();
+        super.layouting(ctx);
+    }
+
+    @Override
+    public void render(RenderContext ctx, UIInputState inputState) {
+        renderSelf(ctx, inputState);
+    }
+
+    @Override
+    protected Rectangle getViewRegion() {
+        return getAbsoluteViewRect();
+    }
+
+    @Override
+    protected void renderSelf(RenderContext ctx, UIInputState inputState) {
+        MaterialMenuSize size = style().size();
+        Color backgroundColor = style().colors().menuBackground(scheme());
+        Rectangle bounds = getRawBounds();
+        if (!isVisible()) {
+            return;
+        }
+        if (expandProgress <= 0) {
+            return;
+        }
+
+        for (ILayoutElement child : getChildren()) {
+            if (child instanceof MaterialMenuItem item) {
+                item.style().colors = style().colors();
+            }
+        }
+        float radius = size.cornerRadius();
+        float topLeft = 0, topRight = 0, bottomLeft = 0, bottomRight = 0;
+
+        if (getParent() instanceof MaterialMenu menu) {
+            int index = menu.getChildren().indexOf(this);
+            int count = menu.getChildren().size();
+
+            if (index == 0) {
+                topLeft = radius;
+                topRight = radius;
+                bottomLeft = 8;
+                bottomRight = 8;
+            }
+            if (index == count - 1) {
+                topLeft = 8;
+                topRight = 8;
+                bottomLeft = radius;
+                bottomRight = radius;
+            }
+            if (count == 1) {
+                topLeft = radius;
+                topRight = radius;
+                bottomLeft = radius;
+                bottomRight = radius;
+            }
+        } else {
+            throw new IllegalStateException();
+        }
+
+        float animatedHeight = bounds.height * expandProgress;
+
+        ctx.save();
+        MaterialElevation.draw(
+                ctx,
+                2,
+                bounds.x,
+                bounds.y,
+                bounds.width,
+                bounds.height,
+                Math.min(bottomLeft, animatedHeight / 2),
+                Math.min(bottomRight, animatedHeight / 2),
+                Math.min(topLeft, animatedHeight / 2),
+                Math.min(topRight, animatedHeight / 2)
+        );
+        ctx.beginPath();
+        ctx.roundedRectComplex(bounds.x, bounds.y, bounds.width, animatedHeight,
+                Math.min(bottomLeft, animatedHeight / 2), Math.min(bottomRight, animatedHeight / 2), Math.min(topLeft, animatedHeight / 2), Math.min(topRight, animatedHeight / 2));
+        ctx.fillColor(backgroundColor);
+        ctx.endPath(true);
+        ctx.restore();
+
+        for (ILayoutElement child : getChildren()) {
+            if (child instanceof AbstractWidget<?> widget) {
+                if (widget.isVisible()) {
+                    widget.render(ctx, inputState);
+                }
+            }
+        }
+    }
+
+    public MaterialMenuGroup addItem(MaterialMenuItem item) {
+        addChild(item);
+        return this;
+    }
+
+    public float getExpandProgress() {
+        return expandProgress;
+    }
+
+    void setExpandProgress(float progress) {
+        this.expandProgress = progress;
+    }
+}

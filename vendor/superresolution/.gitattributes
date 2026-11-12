@@ -1,0 +1,2 @@
+modules/native/cpp/*.sh text eol=lf
+modules/native/cpp/**/*.sh text eol=lf
