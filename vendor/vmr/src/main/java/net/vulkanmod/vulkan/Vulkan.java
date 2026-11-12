@@ -61,8 +61,6 @@ public class Vulkan {
         }
     }
 
-    public static final Set<String> REQUIRED_EXTENSION = getRequiredExtensionSet();
-
     private static Set<String> getRequiredExtensionSet() {
         ArrayList<String> extensions = new ArrayList<>(List.of(VK_KHR_SWAPCHAIN_EXTENSION_NAME));
 
@@ -155,6 +153,7 @@ public class Vulkan {
 
     public static void initVulkan(long window) {
         Initializer.LOGGER.info("VulkanMod: initVulkan starting...");
+        registerDlssExtensions();
         createInstance();
         Initializer.LOGGER.info("VulkanMod: Instance created.");
         setupDebugMessenger();
@@ -177,6 +176,18 @@ public class Vulkan {
         Renderer.initRenderer();
         Initializer.LOGGER.info("VulkanMod: Renderer initialized.");
 
+    }
+
+    private static void registerDlssExtensions() {
+        if (!Boolean.getBoolean("superresolution.dlss")) return;
+        VulkanExtensionHooks.requireDeviceExtension("VK_NVX_binary_import");
+        VulkanExtensionHooks.requireDeviceExtension("VK_NVX_image_view_handle");
+        VulkanExtensionHooks.requireDeviceExtension("VK_KHR_push_descriptor");
+        VulkanExtensionHooks.requireDeviceExtension("VK_EXT_descriptor_indexing");
+    }
+
+    public static Set<String> requiredExtensions() {
+        return getRequiredExtensionSet();
     }
 
     static void createStagingBuffers() {

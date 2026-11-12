@@ -238,7 +238,7 @@ public abstract class DeviceManager {
 
             }
 
-            java.util.Set<String> deviceExtensions = new java.util.HashSet<>(Vulkan.REQUIRED_EXTENSION);
+            java.util.Set<String> deviceExtensions = new java.util.HashSet<>(Vulkan.requiredExtensions());
             if (device.isPortabilitySubset()) {
                 deviceExtensions.add(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
             }
@@ -285,7 +285,7 @@ public abstract class DeviceManager {
             Queue.QueueFamilyIndices indices = findQueueFamilies(device);
 
             boolean extensionsSupported = Device.getAvailableExtensions(device)
-                    .containsAll(Vulkan.REQUIRED_EXTENSION);
+                    .containsAll(Vulkan.requiredExtensions());
 
             boolean swapChainAdequate = false;
 
@@ -361,7 +361,7 @@ public abstract class DeviceManager {
             stringBuilder.append("\t\tVulkan Version: %s\n".formatted(device.vkVersion));
 
             stringBuilder.append("\t\t");
-            var unsupportedExtensions = device.getUnsupportedExtensions(Vulkan.REQUIRED_EXTENSION);
+            var unsupportedExtensions = device.getUnsupportedExtensions(Vulkan.requiredExtensions());
             if (unsupportedExtensions.isEmpty()) {
                 stringBuilder.append("All required extensions are supported\n");
             } else {
