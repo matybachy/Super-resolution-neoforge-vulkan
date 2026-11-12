@@ -5,6 +5,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.vulkanmod.Initializer;
+import net.vulkanmod.config.DlssSettings;
 import net.vulkanmod.config.option.Options;
 
 import java.util.Set;
@@ -21,6 +22,12 @@ public class ModSettingsRegistry {
                                                                   Options::getOptionPages,
                                                                   () -> Initializer.CONFIG.write());
         this.addModEntry(vulkanModSettings);
+        this.addModEntry(new ModSettingsEntry(Component.literal("Super Resolution"),
+                () -> ResourceLocation.fromNamespaceAndPath("vulkanmod", "vlogo_transparent.png"),
+                DlssSettings::pages,
+                () -> {
+                    // Values are stored as JVM properties for the optional bridge.
+                }));
     }
 
     public void addModEntry(ModSettingsEntry entry) {

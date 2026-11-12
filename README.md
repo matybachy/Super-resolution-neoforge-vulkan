@@ -75,3 +75,6 @@ the bridge and all required images are valid.
 Enable the runtime bootstrap with the JVM property
 `-Dsuperresolution.dlss=true`; quality can be selected with
 `-Dsuperresolution.dlss.quality=QUALITY|BALANCED|PERFORMANCE|ULTRA_PERFORMANCE`.
+When using the patched VMR settings screen, the same enable, quality, and
+sharpness values are exposed under the Super Resolution page and written back
+to these properties. Changes take effect after restarting the renderer.
