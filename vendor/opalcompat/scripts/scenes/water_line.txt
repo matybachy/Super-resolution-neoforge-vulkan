@@ -1,0 +1,49 @@
+# The straight line across the water while walking: on a thin path over deep water, standing, walking with the view
+# bobbing, and walking without it.
+gui false
+distance 5
+cmd gamerule sendCommandFeedback false
+cmd gamerule doDaylightCycle false
+cmd time set 6000
+cmd gamemode creative @a
+resize 2560 1369
+bob true
+cmd tp @a 120 80 -120 -90 5
+wait 60
+fly true
+settle
+cmd fill 110 63 -120 200 63 -120 minecraft:stone
+cmd tp @a 120 64 -120 -90 5
+wait 5
+fly false
+wait 100
+settle
+wait 40
+shot wl_still
+dump wl_still
+wait 10
+hold forward
+wait 20
+shot wl_bob1
+wait 6
+shot wl_bob2
+wait 6
+shot wl_bob3
+dump wl_bob
+wait 10
+hold none
+bob false
+cmd tp @a 120 64 -120 -90 5
+wait 60
+hold forward
+wait 20
+shot wl_nobob1
+wait 6
+shot wl_nobob2
+wait 6
+shot wl_nobob3
+dump wl_nobob
+wait 10
+hold none
+bob true
+error

@@ -1,0 +1,53 @@
+# Create's moving parts, built by commands: kinetic network, belt, mixer and press, fan, water wheel, and a piston that assembles a contraption.
+cmd gamerule sendCommandFeedback false
+cmd gamemode creative @a
+cmd clear @a
+cmd fill -14 99 -14 14 99 14 minecraft:smooth_stone
+cmd fill -14 100 -14 14 112 14 minecraft:air
+cmd tp @a 0 104 -12 0 15
+gui true
+slot 0
+cmd setblock -8 100 0 create:creative_motor[facing=east]
+cmd setblock -7 100 0 create:shaft[axis=x]
+cmd setblock -6 100 0 create:cogwheel[axis=x]
+cmd setblock -5 100 0 create:shaft[axis=x]
+cmd setblock -4 100 0 create:gearbox[axis=y]
+cmd setblock -3 100 0 create:large_cogwheel[axis=x]
+cmd setblock -2 100 0 create:shaft[axis=x]
+cmd setblock -1 100 0 create:encased_fan[facing=east]
+# A belt between two shafts.
+cmd setblock -8 100 -4 create:creative_motor[facing=east]
+cmd setblock -7 100 -4 create:belt[facing=east,slope=horizontal,part=start,casing=false]
+cmd setblock -6 100 -4 create:belt[facing=east,slope=horizontal,part=middle,casing=false]
+cmd setblock -5 100 -4 create:belt[facing=east,slope=horizontal,part=middle,casing=false]
+cmd setblock -4 100 -4 create:belt[facing=east,slope=horizontal,part=end,casing=false]
+# Press and mixer over a basin, turned by a motor above.
+cmd setblock 3 100 3 create:basin
+cmd setblock 3 102 3 create:mechanical_mixer
+cmd setblock 3 103 3 create:creative_motor[facing=down]
+cmd setblock 6 100 3 create:basin
+cmd setblock 6 102 3 create:mechanical_press[facing=north]
+cmd setblock 6 102 4 create:creative_motor[facing=north]
+# A water wheel with water beside it.
+cmd setblock 6 101 -4 create:water_wheel[facing=east]
+cmd setblock 7 101 -4 create:shaft[axis=x]
+cmd setblock 6 102 -4 minecraft:water
+# A piston, its pole and a block it carries: it assembles when it turns, and moves as a contraption.
+cmd setblock -3 100 7 create:creative_motor[facing=east]
+cmd setblock -2 100 7 create:mechanical_piston[facing=south,axis_along_first=false,state=retracted]
+cmd setblock -2 100 8 create:piston_extension_pole[facing=south]
+cmd setblock -2 100 9 create:piston_extension_pole[facing=south]
+cmd setblock -2 100 10 minecraft:oak_planks
+# A tank and a pipe.
+cmd setblock 3 100 -8 create:fluid_tank
+cmd setblock 4 100 -8 create:fluid_pipe
+settle
+shot c_first
+dump c_first
+wait 10
+wait 100
+shot c_later
+cmd tp @a 0 112 -14 0 35
+wait 60
+shot c_above
+error

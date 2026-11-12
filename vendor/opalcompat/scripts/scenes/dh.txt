@@ -1,0 +1,18 @@
+# Distant Horizons: far terrain from high up, once it has had time to generate, by day and at night.
+cmd gamerule sendCommandFeedback false
+cmd gamemode spectator @a
+cmd tp @a 0 200 0 135 20
+distance 8
+wait 200
+settle
+wait 400
+shot d_day
+dump d_day
+wait 10
+cmd time set 18000
+wait 60
+shot d_night
+cmd time set 6000
+wait 40
+fps dh 8
+error

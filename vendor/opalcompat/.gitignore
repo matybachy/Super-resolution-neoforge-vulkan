@@ -1,0 +1,13 @@
+refs/
+*.log
+build/
+.gradle/
+run/*
+!run/shaderpacks/
+run/shaderpacks/*.zip
+.idea/
+tools/
+libs/
+release/
+test-instance/
+!run/baseline/

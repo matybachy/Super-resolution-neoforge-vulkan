@@ -1,0 +1,28 @@
+# Near and far terrain together with a player's own settings: low over the water, higher, and from high up twice to see it hold still.
+cmd gamerule sendCommandFeedback false
+cmd gamerule doDaylightCycle false
+cmd time set 6000
+cmd gamemode spectator @a
+resize 2560 1369
+cmd tp @a 0 72 0 45 5
+wait 200
+settle
+wait 100
+shot look_low
+cmd tp @a 0 90 0 45 5
+wait 100
+settle
+wait 100
+shot look_side
+cmd tp @a 0 140 0 135 20
+wait 200
+settle
+wait 200
+cmd tick freeze
+wait 30
+shot look_far_a
+wait 5
+shot look_far_b
+cmd tick unfreeze
+wait 200
+error

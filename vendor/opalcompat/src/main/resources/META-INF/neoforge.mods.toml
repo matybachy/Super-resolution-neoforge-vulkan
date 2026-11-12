@@ -1,0 +1,70 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="matyb"
+credits="Shader pack loader and GLSL translation adapted from Vitrail (LGPL-3.0); reference: Iris (LGPL-3.0); renderer: VulkanMod Reforged (LGPL-3.0)"
+description='''
+Runs OptiFine/Iris format shader packs on the VulkanMod Reforged renderer, and makes Opal Shaders, Vectors, Distant Horizons, Create and Mekanism work with it: on Vulkan the packs are drawn here and Opal's OpenGL renderer stands down, and the settings of all of them are on one screen. Without VulkanMod, Opal takes packs with more than seven custom images and Flywheel gets out of its way. Not made by the authors of Opal.
+'''
+
+[[mixins]]
+config="${mod_id}.mixins.json"
+
+[[mixins]]
+config="${mod_id}.compat.mixins.json"
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="${neo_version_range}"
+    ordering="NONE"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="CLIENT"
+
+# Mixins reach into VulkanMod Reforged internals, so where it is there, only the exact version this was built against is accepted.
+[[dependencies.${mod_id}]]
+    modId="vulkanmod"
+    type="optional"
+    versionRange="[${vulkanmod_version}]"
+    ordering="AFTER"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="opal"
+    type="optional"
+    versionRange="[1.0.0-alpha.8,)"
+    ordering="AFTER"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="vectors"
+    type="optional"
+    versionRange="[1.5.0,)"
+    ordering="AFTER"
+    side="CLIENT"
+
+# The two jars this mod used to be. Each would draw or hook the same things a second time.
+[[dependencies.${mod_id}]]
+    modId="vitrailvk"
+    type="incompatible"
+    reason="Vitrail VK is now part of Opal Compat. Remove the vitrailvk jar."
+    versionRange="[0,)"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="vitrailbridge"
+    type="incompatible"
+    reason="Vitrail Bridge is now part of Opal Compat. Remove the vitrailbridge jar."
+    versionRange="[0,)"
+    side="CLIENT"

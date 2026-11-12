@@ -1,0 +1,14 @@
+# Far terrain from above, every target saved: to read what a debug copy of a pack writes.
+cmd gamerule sendCommandFeedback false
+cmd gamerule doDaylightCycle false
+cmd time set 6000
+cmd gamemode spectator @a
+cmd tp @a 0 140 0 135 20
+resize 2560 1369
+wait 300
+settle
+wait 300
+shot dbg
+dump dbg
+wait 10
+error

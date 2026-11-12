@@ -1,0 +1,64 @@
+# What blinks with a player's render distance: standing, drifting across the shadow grid while the picture hardly moves,
+# flying high, turning, flying low over water, and walking on the ground with the view bobbing, once all is built.
+gui false
+distance 5
+cmd gamerule sendCommandFeedback false
+cmd gamerule doDaylightCycle false
+cmd time set 6000
+cmd gamemode spectator @a
+resize 2560 1369
+cmd tp @a 0 140 0 135 20
+wait 100
+settle
+wait 100
+note still
+probe start
+wait 100
+probe stop
+note slow drift
+probe start
+drift 0.05
+wait 200
+drift 0
+wait 10
+probe stop
+note flying high
+probe start
+hold forward
+wait 200
+hold none
+wait 10
+probe stop
+note turning
+probe start
+turn 0.6
+wait 200
+turn 0
+wait 10
+probe stop
+cmd tp @a 120 70 -120 135 5
+wait 100
+settle
+note flying low over water
+probe start
+hold forward
+wait 300
+hold none
+wait 10
+probe stop
+cmd gamemode creative @a
+wait 5
+fly false
+cmd spreadplayers 0 0 0 64 false @a
+wait 60
+settle
+note walking on the ground
+probe start
+hold forward
+turn 0.3
+wait 400
+turn 0
+hold none
+wait 10
+probe stop
+error

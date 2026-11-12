@@ -1,0 +1,50 @@
+# The scene where the sky went purple, one thing at a time.
+cmd difficulty easy
+cmd gamemode creative @a
+cmd fill -8 120 -8 8 120 8 minecraft:grass_block
+cmd tp @a 0 121 -7 0 -20
+gui true
+settle
+shot h1_platform_no_item
+cmd give @a minecraft:diamond_sword[enchantments={levels:{sharpness:1}}]
+wait 30
+shot h2_enchanted
+cmd item replace entity @a weapon.offhand with minecraft:torch
+wait 30
+shot h3_enchanted_torch
+cmd setblock 0 121 0 minecraft:chest[facing=north]
+cmd setblock 2 121 0 minecraft:oak_sign[rotation=8]{front_text:{messages:['"Vitrail"','""','""','""']}}
+cmd setblock -2 121 0 minecraft:white_banner[rotation=8]
+wait 30
+shot h4_block_entities
+cmd setblock 4 121 0 minecraft:campfire
+cmd setblock -4 121 0 minecraft:netherrack
+cmd setblock -4 122 0 minecraft:fire
+wait 30
+shot h5_fire
+cmd setblock 6 120 2 minecraft:water
+cmd setblock -6 120 2 minecraft:lava
+wait 30
+shot h6_fluids
+cmd summon minecraft:zombie 1 121 3 {NoAI:1b,PersistenceRequired:1b}
+cmd summon minecraft:sheep -2 121 3 {NoAI:1b,PersistenceRequired:1b}
+cmd summon minecraft:armor_stand 3 121 3
+wait 30
+shot h7_mobs
+cmd time set 18000
+wait 40
+cmd time set 6000
+wait 60
+shot h8_after_night
+cmd item replace entity @a weapon.mainhand with minecraft:air
+wait 30
+shot h9_no_sword
+cmd weather rain
+wait 60
+shot h10_rain_no_sword
+cmd give @a minecraft:diamond_sword[enchantments={levels:{sharpness:1}}]
+wait 30
+shot h11_rain_sword
+cmd weather clear
+wait 60
+shot h12_clear_sword

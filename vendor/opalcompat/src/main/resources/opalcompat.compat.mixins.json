@@ -1,0 +1,22 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "dev.opalcompat.compat.mixin",
+  "plugin": "dev.opalcompat.compat.mixin.CompatMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "OpalOnVulkanMixin",
+    "VectorsOnVulkanMixin",
+    "OpalImagesMixin",
+    "OpalImageMixin",
+    "FlywheelShaderPackMixin",
+    "EveryCompatModulesMixin",
+    "DhChunkyMixin",
+    "CreateStitchedSpriteMixin",
+    "CreateSpriteShifterMixin",
+    "CreateCtSpriteShifterMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

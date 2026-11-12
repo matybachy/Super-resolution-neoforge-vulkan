@@ -1,0 +1,7 @@
+# The whole mod set: does it come up with a pack at all.
+settle
+wait 40
+shot full_start
+dump full_start
+wait 10
+error

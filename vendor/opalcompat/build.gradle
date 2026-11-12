@@ -1,0 +1,195 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.141'
+}
+
+version = project.mod_version
+group = project.mod_group_id
+
+base {
+    archivesName = project.mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+// Opal and Vectors are not on a public Maven repository. What this mod calls of them is declared in src/stubs,
+// compiled against and left out of the jar; at run time their own classes answer.
+sourceSets.main.java.srcDir 'src/stubs/java'
+
+// VulkanMod Reforged: the release jar, fetched once and verified. See gradle.properties.
+def vulkanModJar = file("libs/VulkanMod-Reforged-${project.vulkanmod_version}.jar")
+if (!vulkanModJar.isFile()) {
+    def name = "VulkanMod-Reforged-${project.vulkanmod_version}.jar"
+    def url = "https://github.com/TrulyRin/VulkanMod-Reforged/releases/download/${project.vulkanmod_tag}/" +
+            URLEncoder.encode(name, 'UTF-8').replace('+', '%2B')
+    logger.lifecycle("Downloading ${url}")
+    vulkanModJar.parentFile.mkdirs()
+    def tmp = new File(vulkanModJar.path + '.part')
+    new URL(url).withInputStream { input -> tmp.withOutputStream { it << input } }
+    def digest = java.security.MessageDigest.getInstance('SHA-256').digest(tmp.bytes).encodeHex().toString()
+    if (digest != project.vulkanmod_sha256) {
+        tmp.delete()
+        throw new GradleException("VulkanMod Reforged jar checksum mismatch: ${digest}")
+    }
+    tmp.renameTo(vulkanModJar)
+}
+
+// Distant Horizons: compiled against, never shipped. The bridge in dev.opalcompat.dh stands in for its internal
+// renderer classes, so this is the one version it knows (see DhSupport).
+def distantHorizonsJar = file("libs/DistantHorizons-${project.dh_version}-fabric-neoforge.jar")
+if (!distantHorizonsJar.isFile()) {
+    logger.lifecycle("Downloading ${project.dh_url}")
+    def tmp = new File(distantHorizonsJar.path + '.part')
+    new URL(project.dh_url).withInputStream { input -> tmp.withOutputStream { it << input } }
+    def digest = java.security.MessageDigest.getInstance('SHA-256').digest(tmp.bytes).encodeHex().toString()
+    if (digest != project.dh_sha256) {
+        tmp.delete()
+        throw new GradleException("Distant Horizons jar checksum mismatch: ${digest}")
+    }
+    tmp.renameTo(distantHorizonsJar)
+}
+
+// Validation layers for dev runs: the Khronos layer from tools/vvl (see PORTING.md), enabled through the
+// Vulkan loader's environment so VulkanMod Reforged needs no change. -Pvalidation=false turns it off.
+def validationDir = file('tools/vvl')
+def validationEnabled = providers.gradleProperty('validation').getOrElse('true') == 'true'
+        && new File(validationDir, 'VkLayer_khronos_validation.json').isFile()
+def autotestDir = file('run/autotest')
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            systemProperty 'opalcompat.reportAll', providers.gradleProperty('reportAll').getOrElse('false')
+            logLevel = org.slf4j.event.Level.DEBUG
+            if (validationEnabled) {
+                environment 'VK_ADD_LAYER_PATH', validationDir.absolutePath
+                environment 'VK_INSTANCE_LAYERS', 'VK_LAYER_KHRONOS_validation'
+                environment 'VK_KHRONOS_VALIDATION_DEBUG_ACTION', 'VK_DBG_LAYER_ACTION_LOG_MSG'
+                environment 'VK_KHRONOS_VALIDATION_REPORT_FLAGS', 'error,warn'
+                environment 'VK_KHRONOS_VALIDATION_LOG_FILENAME', new File(autotestDir, 'validation.log').absolutePath
+            }
+        }
+
+        client {
+            client()
+        }
+
+        // Loads the fixed test world, waits for the terrain, writes run/autotest/screenshot.png and
+        // result.txt, and quits. -Pautotest.frames / -Pautotest.pack / -Pautotest.options / -Pautotest.camera.
+        autotest {
+            client()
+            systemProperty 'opalcompat.autotest', 'true'
+            systemProperty 'opalcompat.autotest.frames', providers.gradleProperty('autotest.frames').getOrElse('120')
+            systemProperty 'opalcompat.autotest.camera', providers.gradleProperty('autotest.camera').getOrElse('0,0,135,20,14')
+            systemProperty 'opalcompat.autotest.time', providers.gradleProperty('autotest.time').getOrElse('6000')
+            systemProperty 'opalcompat.pack', providers.gradleProperty('autotest.pack').getOrElse('')
+            systemProperty 'opalcompat.options', providers.gradleProperty('autotest.options').getOrElse('')
+            systemProperty 'opalcompat.autotest.out', autotestDir.absolutePath
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // On the runtime classpath as a mod jar; its own jar-in-jar carries LWJGL Vulkan, shaderc and VMA.
+    implementation files(vulkanModJar)
+    compileOnly files(distantHorizonsJar)
+
+    compileOnly "org.lwjgl:lwjgl-vulkan:${project.lwjgl_version}"
+    compileOnly "org.lwjgl:lwjgl-shaderc:${project.lwjgl_version}"
+    compileOnly "org.lwjgl:lwjgl-vma:${project.lwjgl_version}"
+}
+
+// Out-of-game translation and compilation check of every pack in run/shaderpacks (see PackCompileTool).
+configurations {
+    packTool
+}
+
+dependencies {
+    def natives = 'natives-windows'
+    packTool 'org.joml:joml:1.10.5'
+    packTool 'org.slf4j:slf4j-api:2.0.9'
+    packTool 'org.slf4j:slf4j-simple:2.0.9'
+    packTool "org.lwjgl:lwjgl:${project.lwjgl_version}"
+    packTool "org.lwjgl:lwjgl:${project.lwjgl_version}:${natives}"
+    packTool "org.lwjgl:lwjgl-shaderc:${project.lwjgl_version}"
+    packTool "org.lwjgl:lwjgl-shaderc:${project.lwjgl_version}:${natives}"
+}
+
+// A copy of Distant Horizons that selects Blaze3D in its own code and calls no OpenGL of its own, for the game with this
+// mod on VulkanMod Reforged (see PatchDistantHorizons). Not part of the normal build; the jar it starts from is the
+// verified one above, and what it writes keeps the file name.
+sourceSets.create('dhPatch')
+
+dependencies {
+    dhPatchImplementation 'org.ow2.asm:asm-tree:9.7'
+}
+
+tasks.register('patchDistantHorizons', JavaExec) {
+    group = 'build'
+    description = 'Writes the patched copy of Distant Horizons to build/libs/distanthorizons.'
+    classpath = sourceSets.dhPatch.runtimeClasspath
+    mainClass = 'dev.opalcompat.dhpatch.PatchDistantHorizons'
+    args distantHorizonsJar.absolutePath,
+            layout.buildDirectory.file("libs/distanthorizons/${distantHorizonsJar.name}").get().asFile.absolutePath
+}
+
+tasks.register('checkPacks', JavaExec) {
+    group = 'verification'
+    description = 'Translates and compiles every program of the packs in run/shaderpacks.'
+    dependsOn tasks.named('classes')
+    classpath = files(sourceSets.main.output.classesDirs, sourceSets.main.output.resourcesDir) + configurations.packTool
+    mainClass = 'dev.opalcompat.compile.PackCompileTool'
+    args file('run').absolutePath, providers.gradleProperty('packs').getOrElse('')
+    systemProperty 'org.slf4j.simpleLogger.defaultLogLevel', providers.gradleProperty('logLevel').getOrElse('info')
+    systemProperty 'org.slf4j.simpleLogger.showDateTime', 'false'
+    systemProperty 'opalcompat.dumpAll', providers.gradleProperty('dumpAll').getOrElse('false')
+    systemProperty 'opalcompat.dhVariant', providers.gradleProperty('dhVariant').getOrElse('false')
+}
+
+def resourceProps = [
+        minecraft_version_range: project.minecraft_version_range,
+        neo_version_range      : project.neo_version_range,
+        vulkanmod_version      : project.vulkanmod_version,
+        mod_id                 : project.mod_id,
+        mod_name               : project.mod_name,
+        mod_version            : project.mod_version,
+        mod_license            : project.mod_license,
+]
+
+processResources {
+    inputs.properties resourceProps
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand resourceProps
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+jar {
+    exclude 'dev/opal/**', 'dev/vector/**'
+    from(layout.projectDirectory.file('LICENSE')) { rename { "${it}_${project.mod_id}" } }
+    from(layout.projectDirectory.file('COPYING')) { rename { "${it}_${project.mod_id}" } }
+    from(layout.projectDirectory.file('NOTICE')) { rename { "${it}_${project.mod_id}" } }
+    from(layout.projectDirectory.file('NOTICE-vitrail')) { rename { "${it}_${project.mod_id}" } }
+}

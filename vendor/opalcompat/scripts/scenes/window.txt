@@ -1,0 +1,10 @@
+# The window and the graphics mode; which of them brings validation errors is told by running them one at a time.
+settle
+wait 20
+note step 1
+graphics fabulous
+wait 80
+shot w_fabulous
+graphics fancy
+wait 80
+shot w_fancy

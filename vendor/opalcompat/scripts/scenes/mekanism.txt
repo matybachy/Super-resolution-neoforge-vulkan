@@ -1,0 +1,43 @@
+# Mekanism's blocks: machines, energy cube, tanks, cables and pipes, generators, a dynamic tank as a multiblock.
+cmd gamerule sendCommandFeedback false
+cmd gamemode creative @a
+cmd clear @a
+cmd fill -14 99 -14 14 99 14 minecraft:smooth_stone
+cmd fill -14 100 -14 14 112 14 minecraft:air
+cmd tp @a 0 104 -12 0 15
+gui true
+slot 0
+cmd setblock -8 100 0 mekanism:energized_smelter[facing=north]
+cmd setblock -6 100 0 mekanism:enrichment_chamber[facing=north,active=true]
+cmd setblock -4 100 0 mekanism:ultimate_energy_cube[facing=north]
+cmd setblock -2 100 0 mekanism:basic_fluid_tank
+cmd setblock 0 100 0 mekanism:basic_chemical_tank[facing=north]
+cmd setblock 2 100 0 mekanism:digital_miner[facing=north]
+cmd setblock 6 100 0 mekanism:teleporter
+cmd setblock -8 101 3 mekanism:basic_universal_cable
+cmd setblock -7 101 3 mekanism:basic_universal_cable
+cmd setblock -6 101 3 mekanism:basic_universal_cable
+cmd setblock -5 101 3 mekanism:basic_mechanical_pipe
+cmd setblock -4 101 3 mekanism:basic_mechanical_pipe
+cmd setblock -3 101 3 mekanism:basic_pressurized_tube
+cmd setblock -2 101 3 mekanism:basic_logistical_transporter
+cmd setblock 2 100 3 mekanismgenerators:heat_generator[facing=north]
+cmd setblock 4 100 3 mekanismgenerators:wind_generator[facing=north]
+cmd setblock 7 100 3 mekanismgenerators:solar_generator
+cmd setblock 9 100 3 mekanismgenerators:gas_burning_generator[facing=north]
+# A dynamic tank: walls of it, glass in front, a valve.
+cmd fill -8 100 7 -5 103 10 mekanism:dynamic_tank hollow
+cmd fill -7 101 7 -6 102 7 mekanism:structural_glass
+cmd setblock -8 101 8 mekanism:dynamic_valve
+cmd give @a mekanism:atomic_disassembler
+wait 20
+settle
+shot m_first
+dump m_first
+wait 10
+wait 60
+shot m_later
+cmd tp @a 0 110 -12 0 30
+wait 40
+shot m_above
+error

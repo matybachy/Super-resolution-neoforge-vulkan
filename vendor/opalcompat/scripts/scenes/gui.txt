@@ -1,0 +1,30 @@
+# The settings screens and how they lead to each other. 854x480 at GUI scale 2 is 427x240.
+settle
+wait 40
+shot world
+dump world
+wait 10
+screen video
+wait 5
+shot gui_vulkan
+click 60 150
+wait 5
+shot gui_shaders
+click 60 198
+wait 5
+shot gui_vectors_workload
+click 60 218
+wait 5
+shot gui_vectors_tune
+screen dev.opal.client.ShaderPackScreen
+wait 5
+shot gui_opal_packs
+screen dev.vector.fabric.gui.VectorScreen
+wait 5
+shot gui_vectors
+screen packs
+wait 5
+shot gui_vitrail_packs
+screen close
+wait 5
+note end

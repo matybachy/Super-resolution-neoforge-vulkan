@@ -1,0 +1,5 @@
+# An upload to a texture with no image yet, as Steam 'n' Rails does while the game loads. OpenGL ignores it.
+settle
+emptyupload
+wait 20
+shot eu_world

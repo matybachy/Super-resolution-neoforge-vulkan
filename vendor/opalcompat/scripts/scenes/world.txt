@@ -1,0 +1,6 @@
+settle
+wait 40
+shot world
+dump world
+wait 10
+error

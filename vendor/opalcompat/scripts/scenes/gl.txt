@@ -1,0 +1,5 @@
+# Opal as the renderer, on OpenGL.
+settle
+shot gl_world
+wait 20
+error

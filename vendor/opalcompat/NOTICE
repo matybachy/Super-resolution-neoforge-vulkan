@@ -1,0 +1,52 @@
+Third-party material in Opal Compat
+==================================
+
+Opal Compat is distributed under the GNU Lesser General Public License version 3 only, in LICENSE
+(with the GNU General Public License version 3 it refers to, in COPYING).
+
+Files that reproduce or adapt material of another project are listed here, with that project's
+terms. Every such file also names its origin in its header.
+
+Vitrail, https://github.com/avpbynf/Vitrail-Shaders
+Copyright the Vitrail contributors
+GNU Lesser General Public License version 3
+Vitrail's own NOTICE, which lists the material Vitrail adapted from Iris, is kept in
+NOTICE-vitrail and applies to every file taken from Vitrail.
+
+Iris, https://github.com/IrisShaders/Iris (branch 1.21.1)
+Copyright the Iris contributors
+GNU Lesser General Public License version 3
+Besides what reaches this project through Vitrail, these follow Iris's behaviour and name what they
+follow in their headers; none of them copies its code:
+  src/main/java/dev/opalcompat/render/Families.java
+  src/main/java/dev/opalcompat/render/HandPass.java
+  src/main/java/dev/opalcompat/render/ShadowFeatures.java
+  src/main/java/dev/opalcompat/render/ShadowMaps.java
+  src/main/java/dev/opalcompat/render/DrawIds.java
+  src/main/java/dev/opalcompat/render/TextureImages.java
+  src/main/java/dev/opalcompat/mixin/ItemInHandRendererMixin.java
+  src/main/java/dev/opalcompat/render/PassBuffers.java
+
+VulkanMod Reforged, https://github.com/TrulyRin/VulkanMod-Reforged
+GNU Lesser General Public License version 3
+Not redistributed; a runtime dependency only. The mixins in dev.opalcompat.mixin reach into its classes,
+and render/MeshDraw.java draws with its index buffers using the counts its Drawer uses.
+
+Distant Horizons, https://gitlab.com/distant-horizons-team/distant-horizons (3.3.3)
+GNU Lesser General Public License version 3
+Not redistributed; compiled against. src/main/java/dev/opalcompat/dh implements its renderer interfaces and
+copies none of its code. Its vertex layout and quad order are followed in LodBuffer and PackPipeline.
+
+Opal Shaders 1.0.0-alpha.8
+Its metadata gives the license as "UNDECIDED". Not redistributed; nothing of it is copied. src/stubs names the few
+members this mod calls, so that it compiles without the jar, and is left out of the built jar.
+
+Vectors 1.5.3
+Copyright 2026 Vector contributors
+MIT License. Not redistributed. src/stubs names the members this mod calls and is left out of the built jar. The
+ranges of the sliders in src/main/java/dev/opalcompat/compat/VectorsPages.java are the ones its own settings screen gives them.
+
+Flywheel, https://github.com/Engine-Room/Flywheel
+MIT License
+Not redistributed. src/main/java/dev/opalcompat/compat/mixin/FlywheelShaderPackMixin.java answers its question whether a
+shader pack is in use.
