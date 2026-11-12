@@ -53,7 +53,10 @@ cmake --build native/build --config Release
 
 The CMake file reads headers from `C:\dev\DLSS\include` and links the Windows
 x64 import library from `C:\dev\DLSS\lib\Windows_x86_64\x64`. It does not copy
-those files into this repository. The bridge must initialize NGX
+those files into this repository. At runtime, keep the matching NVIDIA NGX
+DLLs from `C:\dev\DLSS\lib\Windows_x86_64\rel` on the process `PATH` (or
+alongside the private bridge DLL), and put the built `superresolution_dlss.dll`
+on the Java library path. The bridge must initialize NGX
 with the application's Vulkan instance/device, query feature requirements
 before device creation, and translate the SDK resource/layout requirements
 into the VulkanMod command buffer.
