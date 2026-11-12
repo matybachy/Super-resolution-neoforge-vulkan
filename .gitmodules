@@ -1,0 +1,9 @@
+[submodule "vmr"]
+	path = vmr
+	url = https://github.com/TrulyRin/VulkanMod-Reforged.git
+	branch = main
+
+[submodule "opalcompat"]
+	path = opalcompat
+	url = https://github.com/matybachy/opal-shaders-compat.git
+	branch = claude-review
