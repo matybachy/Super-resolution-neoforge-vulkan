@@ -35,6 +35,7 @@ public final class VulkanResolveInstaller {
                 coordinator = null;
                 return false;
             }
+
             forceRenderScale(config);
 
             Class<?> hook = Class.forName(HOOK);
@@ -58,6 +59,11 @@ public final class VulkanResolveInstaller {
             uninstall();
             return false;
         }
+    }
+
+    public static boolean reload(DlssConfig config, int displayWidth, int displayHeight) {
+        uninstall();
+        return config.enabled() && install(config, displayWidth, displayHeight);
     }
 
     public static void setFrameInput(FrameInput input) {

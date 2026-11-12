@@ -25,9 +25,7 @@ public class ModSettingsRegistry {
         this.addModEntry(new ModSettingsEntry(Component.literal("Super Resolution"),
                 () -> ResourceLocation.fromNamespaceAndPath("vulkanmod", "vlogo_transparent.png"),
                 DlssSettings::pages,
-                () -> {
-                    // Values are stored as JVM properties for the optional bridge.
-                }));
+                DlssSettings::apply));
     }
 
     public void addModEntry(ModSettingsEntry entry) {

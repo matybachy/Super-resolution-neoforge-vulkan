@@ -1,5 +1,6 @@
 package net.vulkanmod.config;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.vulkanmod.config.gui.OptionBlock;
 import net.vulkanmod.config.option.CyclingOption;
@@ -7,6 +8,7 @@ import net.vulkanmod.config.option.OptionPage;
 import net.vulkanmod.config.option.RangeOption;
 
 import java.util.List;
+import java.lang.reflect.Method;
 
 public final class DlssSettings {
     private static boolean enabled = Boolean.getBoolean("superresolution.dlss");
@@ -43,6 +45,22 @@ public final class DlssSettings {
                                 () -> sharpness)
                 })
         }));
+    }
+
+    public static void apply() {
+        try {
+            Class<?> installer = Class.forName("dev.matybachy.superresolution.VulkanResolveInstaller");
+            Class<?> configType = Class.forName("dev.matybachy.superresolution.DlssConfig");
+            Class<?> algorithmType = Class.forName("dev.matybachy.superresolution.DlssAlgorithm");
+            Object algorithm = Enum.valueOf((Class) algorithmType, quality);
+            Object config = configType.getConstructor(boolean.class, algorithmType, float.class)
+                    .newInstance(enabled, algorithm, sharpness / 100.0F);
+            Method reload = installer.getMethod("reload", configType, int.class, int.class);
+            reload.invoke(null, config, Minecraft.getInstance().getWindow().getWidth(),
+                    Minecraft.getInstance().getWindow().getHeight());
+        } catch (ReflectiveOperationException | RuntimeException error) {
+            System.err.println("DLSS settings could not be applied: " + error.getMessage());
+        }
     }
 
     private static int loadSharpness() {
