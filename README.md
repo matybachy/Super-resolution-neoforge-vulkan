@@ -16,6 +16,9 @@ git submodule update --init --recursive
 ```
 
 LibLibLib, Vectors, and Opal Shaders remain runtime dependencies and are not redistributed here.
+The upstream Super Resolution source is not bundled; this repository contains
+only the DLSS-specific port and retains its GPL-3.0-or-later license in
+`LICENSE-superresolution`.
 
 ## DLSS integration status
 

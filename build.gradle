@@ -21,7 +21,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 jar {
-    from('vendor/superresolution/LICENSE') {
+    from('LICENSE-superresolution') {
         rename { 'LICENSE-superresolution' }
     }
 }
