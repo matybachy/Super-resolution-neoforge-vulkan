@@ -70,6 +70,7 @@ public class Vulkan {
             extensions.add(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
         }
 
+        extensions.addAll(VulkanExtensionHooks.deviceExtensions());
         return new HashSet<>(extensions);
     }
 
@@ -455,7 +456,8 @@ public class Vulkan {
                     + Platform.vulkanDriverHint());
         }
 
-        int extra = (ENABLE_VALIDATION_LAYERS ? 1 : 0) + (portabilityEnumeration ? 1 : 0);
+        int extra = (ENABLE_VALIDATION_LAYERS ? 1 : 0) + (portabilityEnumeration ? 1 : 0)
+                + VulkanExtensionHooks.instanceExtensions().size();
         if (extra == 0) {
             return glfwExtensions;
         }
@@ -468,6 +470,9 @@ public class Vulkan {
         }
         if (portabilityEnumeration) {
             extensions.put(stack.UTF8(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME));
+        }
+        for (String extension : VulkanExtensionHooks.instanceExtensions()) {
+            extensions.put(stack.UTF8(extension));
         }
 
         return extensions.rewind();
