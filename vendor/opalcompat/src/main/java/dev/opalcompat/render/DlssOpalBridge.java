@@ -10,6 +10,8 @@ import org.joml.Matrix4fc;
 public final class DlssOpalBridge {
 	private static final Logger LOGGER = Logger.getLogger(DlssOpalBridge.class.getName());
 	private static final String PASS = "dev.matybachy.superresolution.CameraMotionVectorPass";
+	private static final String INSTALLER = "dev.matybachy.superresolution.VulkanResolveInstaller";
+	private static boolean installed;
 	private static Object pass;
 	private static boolean lookedUp;
 
@@ -17,14 +19,45 @@ public final class DlssOpalBridge {
 	}
 
 	public static void beginFrame(Matrix4fc modelView, Matrix4fc projection) {
+		if (!Boolean.getBoolean("superresolution.dlss")) return;
+		install();
 		Object motionPass = motionPass();
 		if (motionPass == null) return;
 		try {
 			float[] matrix = multiply(projection, modelView);
 			motionPass.getClass().getMethod("beginFrame", float[].class).invoke(motionPass, (Object) matrix);
+			Class<?> installer = Class.forName(INSTALLER);
+			installer.getMethod("beginWorldFrame", float[].class).invoke(null, (Object) matrix);
+			int width = net.minecraft.client.Minecraft.getInstance().getWindow().getWidth();
+			int height = net.minecraft.client.Minecraft.getInstance().getWindow().getHeight();
+			Class<?> input = Class.forName("dev.matybachy.superresolution.FrameInput");
+			Object frame = input.getConstructor(float.class, float.class, float.class, float.class,
+					float.class, float.class, float.class, boolean.class, int.class, int.class,
+					int.class, int.class).newInstance(0.0F, 0.0F, (float) width, (float) height,
+					1.0F, 1.0F, 0.016F, false, width, height, width, height);
+			installer.getMethod("setFrameInput", input).invoke(null, frame);
 		} catch (ReflectiveOperationException | RuntimeException error) {
 			LOGGER.warning("DLSS camera motion-vector bridge disabled: " + error.getMessage());
 			pass = null;
+		}
+
+		private static void install() {
+			if (installed) return;
+			try {
+				Class<?> installer = Class.forName(INSTALLER);
+				Class<?> configType = Class.forName("dev.matybachy.superresolution.DlssConfig");
+				Class<?> algorithmType = Class.forName("dev.matybachy.superresolution.DlssAlgorithm");
+				Object algorithm = Enum.valueOf((Class) algorithmType,
+						System.getProperty("superresolution.dlss.quality", "QUALITY"));
+				Object config = configType.getConstructor(boolean.class, algorithmType, float.class)
+						.newInstance(true, algorithm, 0.2F);
+				int width = net.minecraft.client.Minecraft.getInstance().getWindow().getWidth();
+				int height = net.minecraft.client.Minecraft.getInstance().getWindow().getHeight();
+				installed = (boolean) installer.getMethod("install", configType, int.class, int.class)
+						.invoke(null, config, width, height);
+			} catch (ReflectiveOperationException | RuntimeException error) {
+				LOGGER.warning("DLSS automatic bootstrap unavailable: " + error.getMessage());
+			}
 		}
 	}
 

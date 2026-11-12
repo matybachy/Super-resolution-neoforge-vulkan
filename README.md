@@ -66,3 +66,7 @@ this application. Do not reuse the upstream project's identifier. Do not copy
 NVIDIA SDK binaries or the upstream project's identifier into this repository.
 DLSS remains disabled, with a warning and native-resolution rendering, until
 the bridge and all required images are valid.
+
+Enable the runtime bootstrap with the JVM property
+`-Dsuperresolution.dlss=true`; quality can be selected with
+`-Dsuperresolution.dlss.quality=QUALITY|BALANCED|PERFORMANCE|ULTRA_PERFORMANCE`.

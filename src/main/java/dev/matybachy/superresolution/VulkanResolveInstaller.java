@@ -57,6 +57,10 @@ public final class VulkanResolveInstaller {
         frameInput = input;
     }
 
+    public static void beginWorldFrame(float[] viewProjection) {
+        if (coordinator != null) coordinator.beginWorldFrame(viewProjection);
+    }
+
     public static void resetHistory() {
         if (coordinator != null) coordinator.onTeleportOrDimensionChange();
     }
