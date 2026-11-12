@@ -463,13 +463,17 @@ public final class PackRenderer implements AutoCloseable {
 		DlssOpalBridge.applyJitter(projection, net.minecraft.client.Minecraft.getInstance().getWindow().getWidth(),
 				net.minecraft.client.Minecraft.getInstance().getWindow().getHeight());
 		LevelCapture.capture(modelView, projection);
-		DlssOpalBridge.beginFrame(modelView, projection);
 		ensureLoaded();
 		DhSupport.frame(active != null);
 		if (active != null) {
 			active.values.advance();
 			active.frameOpen = false;
 		}
+		DlssOpalBridge.beginFrame(modelView, projection);
+	}
+
+	public static float frameTimeSeconds() {
+		return active == null ? 0.016F : active.values.frameTime();
 	}
 
 	/** Just before {@code LevelRenderer.renderSky}: what the frame needs ahead of the world. */

@@ -44,10 +44,11 @@ public final class DlssOpalBridge {
 			int width = net.minecraft.client.Minecraft.getInstance().getWindow().getWidth();
 			int height = net.minecraft.client.Minecraft.getInstance().getWindow().getHeight();
 			Class<?> input = Class.forName("dev.matybachy.superresolution.FrameInput");
+			float frameTime = Math.max(0.001F, PackRenderer.frameTimeSeconds());
 			Object frame = input.getConstructor(float.class, float.class, float.class, float.class,
 					float.class, float.class, float.class, boolean.class, int.class, int.class,
 					int.class, int.class).newInstance(jitterX, jitterY, (float) width, (float) height,
-					1.0F, 1.0F, 0.016F, false, width, height, width, height);
+					1.0F, 1.0F, frameTime, false, width, height, width, height);
 			installer.getMethod("setFrameInput", input).invoke(null, frame);
 		} catch (ReflectiveOperationException | RuntimeException error) {
 			LOGGER.warning("DLSS camera motion-vector bridge disabled: " + error.getMessage());

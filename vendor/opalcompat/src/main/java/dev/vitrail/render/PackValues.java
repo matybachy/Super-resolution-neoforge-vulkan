@@ -682,6 +682,10 @@ public final class PackValues {
 	public void advance() {
 		this.state.advance();
 		this.customs.update(this.state, this.state.frameTime());
+	}
+
+	public float frameTime() {
+		return this.state.frameTime();
 
 		// Normally empty, and this is the only place able to say anything: an expression that
 		// throws is dropped where it is evaluated, and that side of the line has no logger.
