@@ -75,6 +75,11 @@ NVIDIA SDK binaries or the upstream project's identifier into this repository.
 DLSS remains disabled, with a warning and native-resolution rendering, until
 the bridge and all required images are valid.
 
+For Windows setup, `native/build-windows.ps1` builds the bridge and
+`native/run-with-dlss.ps1` can launch a Java profile with the bridge and NGX
+runtime directories on `PATH`; it requires the authorized project ID as a
+runtime parameter.
+
 Enable the runtime bootstrap with the JVM property
 `-Dsuperresolution.dlss=true`; quality can be selected with
 `-Dsuperresolution.dlss.quality=QUALITY|BALANCED|PERFORMANCE|ULTRA_PERFORMANCE`.

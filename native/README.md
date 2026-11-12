@@ -21,3 +21,10 @@ Do not commit the SDK, headers, libraries, DLLs, or generated binaries.
 On Windows, run `build-windows.ps1 -DlssSdkDir C:\dev\DLSS` from this
 directory. The script configures and builds the bridge, then reports the DLL
 directories that must be placed on `PATH` at runtime.
+
+To launch a Java-based Minecraft profile with the bridge, put its complete
+argument list (one argument per line) in a file and run
+`run-with-dlss.ps1 -ProjectId <authorized-id> -JavaArgumentsFile <path>`.
+The wrapper sets `SUPERRESOLUTION_NGX_PROJECT_ID`, prepends the bridge and NGX
+runtime directories to `PATH`, and never stores the project ID in the
+repository.
