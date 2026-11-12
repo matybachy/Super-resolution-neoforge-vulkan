@@ -1,0 +1,27 @@
+plugins {
+    id 'java-library'
+}
+
+group = 'dev.matybachy'
+version = '0.1.0-alpha'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+jar {
+    from('vendor/superresolution/LICENSE') {
+        rename { 'LICENSE-superresolution' }
+    }
+}
