@@ -44,6 +44,24 @@ public final class CameraMotionVectorPass {
         return new float[]{current[0] - previous[0], current[1] - previous[1], current[2] - previous[2]};
     }
 
+    /**
+     * Reconstructs one camera-only velocity sample from a depth-buffer sample.
+     * Coordinates are normalized texture coordinates and the returned values
+     * are normalized-device-coordinate deltas suitable for an RG16F target.
+     */
+    public float[] velocityFromDepth(float u, float v, float depth, float[] inverseCurrentViewProjection) {
+        requireMatrix(inverseCurrentViewProjection);
+        if (!Float.isFinite(u) || !Float.isFinite(v) || !Float.isFinite(depth)) {
+            throw new IllegalArgumentException("depth coordinates must be finite");
+        }
+        float[] clip = new float[]{u * 2.0F - 1.0F, v * 2.0F - 1.0F, depth * 2.0F - 1.0F, 1.0F};
+        float[] world = transform4(inverseCurrentViewProjection, clip);
+        float[] current = transform4(currentViewProjection, world);
+        float[] previous = transform4(previousViewProjection, world);
+        return new float[]{current[0] / current[3] - previous[0] / previous[3],
+                current[1] / current[3] - previous[1] / previous[3]};
+    }
+
     public float[] previousViewProjection() {
         return previousViewProjection.clone();
     }
@@ -53,16 +71,26 @@ public final class CameraMotionVectorPass {
     }
 
     private static float[] transform(float[] matrix, float[] position) {
-        float x = matrix[0] * position[0] + matrix[4] * position[1] + matrix[8] * position[2] + matrix[12];
-        float y = matrix[1] * position[0] + matrix[5] * position[1] + matrix[9] * position[2] + matrix[13];
-        float z = matrix[2] * position[0] + matrix[6] * position[1] + matrix[10] * position[2] + matrix[14];
-        float w = matrix[3] * position[0] + matrix[7] * position[1] + matrix[11] * position[2] + matrix[15];
+        float[] transformed = transform4(matrix, new float[]{position[0], position[1], position[2], 1.0F});
+        float x = transformed[0];
+        float y = transformed[1];
+        float z = transformed[2];
+        float w = transformed[3];
         if (w != 0.0f && w != 1.0f) {
             x /= w;
             y /= w;
             z /= w;
         }
         return new float[]{x, y, z};
+    }
+
+    private static float[] transform4(float[] matrix, float[] vector) {
+        return new float[]{
+                matrix[0] * vector[0] + matrix[4] * vector[1] + matrix[8] * vector[2] + matrix[12] * vector[3],
+                matrix[1] * vector[0] + matrix[5] * vector[1] + matrix[9] * vector[2] + matrix[13] * vector[3],
+                matrix[2] * vector[0] + matrix[6] * vector[1] + matrix[10] * vector[2] + matrix[14] * vector[3],
+                matrix[3] * vector[0] + matrix[7] * vector[1] + matrix[11] * vector[2] + matrix[15] * vector[3]
+        };
     }
 
     private static void requireMatrix(float[] matrix) {
