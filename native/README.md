@@ -1,7 +1,7 @@
 # Private DLSS native bridge
 
-This directory is documentation only. The NVIDIA NGX SDK is proprietary and
-must be obtained separately under NVIDIA's license.
+The native bridge in this directory requires a private NVIDIA NGX SDK checkout.
+The SDK is proprietary and must be obtained separately under NVIDIA's license.
 
 Implement the JNI methods declared by
 `dev.matybachy.superresolution.DlssNativeBridge` in a private native library
@@ -17,3 +17,7 @@ named `superresolution_dlss`. The implementation must:
    rendering active.
 
 Do not commit the SDK, headers, libraries, DLLs, or generated binaries.
+
+On Windows, run `build-windows.ps1 -DlssSdkDir C:\dev\DLSS` from this
+directory. The script configures and builds the bridge, then reports the DLL
+directories that must be placed on `PATH` at runtime.
