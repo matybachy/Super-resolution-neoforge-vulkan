@@ -296,6 +296,14 @@ public class DefaultMainPass implements MainPass {
 
         VkCommandBuffer commandBuffer = Renderer.getCommandBuffer();
         Renderer.getInstance().endRenderPass(commandBuffer);
+        if (DlssResolveHook.resolve(mainFramebuffer.getColorAttachment(), mainFramebuffer.getDepthAttachment(),
+                swapChain.getColorAttachment(), swapChain.getColorAttachment().width,
+                swapChain.getColorAttachment().height)) {
+            this.renderScaleResolvedThisFrame = true;
+            this.targets.resolveForGui();
+            selectTarget();
+            return;
+        }
         resolveScaledFramebufferToSwapchain(commandBuffer, true);
         this.renderScaleResolvedThisFrame = true;
         this.targets.resolveForGui();

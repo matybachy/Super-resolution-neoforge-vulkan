@@ -116,6 +116,18 @@ public class Vulkan {
         return DeviceManager.vkDevice;
     }
 
+    public static VkInstance getVkInstance() {
+        return instance;
+    }
+
+    public static long getInstanceProcAddr() {
+        return VK.getFunctionProvider().getFunctionAddress("vkGetInstanceProcAddr");
+    }
+
+    public static long getDeviceProcAddr() {
+        return DeviceManager.vkDevice.getCapabilities().vkGetDeviceProcAddr;
+    }
+
     public static long getAllocator() {
         return allocator;
     }

@@ -10,6 +10,7 @@ import static org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16_SFLOAT;
  * depth images remain owned by the active render pipeline.
  */
 public final class DlssRenderTargets implements AutoCloseable {
+    private static volatile DlssRenderTargets active;
     public record Resource(long image, long imageView, int format, int width, int height, int aspectMask) {
     }
     private VulkanImage output;
@@ -41,6 +42,7 @@ public final class DlssRenderTargets implements AutoCloseable {
                 .setLinearFiltering(false)
                 .setClamp(true)
                 .createVulkanImage();
+        active = this;
         width = displayWidth;
         height = displayHeight;
     }
@@ -53,6 +55,16 @@ public final class DlssRenderTargets implements AutoCloseable {
         return image(motionVectors);
     }
 
+    public static Resource activeMotionVectors() {
+        DlssRenderTargets targets = active;
+        return targets == null ? null : targets.motionVectors();
+    }
+
+    public static VulkanImage activeMotionVectorImage() {
+        DlssRenderTargets targets = active;
+        return targets == null ? null : targets.motionVectors;
+    }
+
     private static Resource image(VulkanImage image) {
         if (image == null) throw new IllegalStateException("DLSS targets are not allocated");
         return new Resource(image.getId(), image.getImageView(), image.format,
@@ -63,6 +75,7 @@ public final class DlssRenderTargets implements AutoCloseable {
     public void close() {
         if (output != null) output.free();
         if (motionVectors != null) motionVectors.free();
+        if (active == this) active = null;
         output = null;
         motionVectors = null;
         width = 0;
