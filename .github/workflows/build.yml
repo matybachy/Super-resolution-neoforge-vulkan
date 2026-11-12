@@ -1,0 +1,22 @@
+name: Compile DLSS port
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vendor/superresolution
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Compile without tests
+        run: ./gradlew build -x test --no-daemon
