@@ -461,6 +461,7 @@ public final class PackRenderer implements AutoCloseable {
 		solidHandIssued = false;
 		handsHandled = false;
 		LevelCapture.capture(modelView, projection);
+		DlssOpalBridge.beginFrame(modelView, projection);
 		ensureLoaded();
 		DhSupport.frame(active != null);
 		if (active != null) {
@@ -616,6 +617,7 @@ public final class PackRenderer implements AutoCloseable {
 				fail(e);
 			}
 		}
+		DlssOpalBridge.endFrame();
 		if (screenEffectPostponed) {
 			screenEffectPostponed = false;
 			ScreenEffectRenderer.renderScreenEffect(Minecraft.getInstance(), new PoseStack());
