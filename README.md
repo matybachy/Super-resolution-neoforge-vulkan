@@ -77,4 +77,7 @@ Enable the runtime bootstrap with the JVM property
 `-Dsuperresolution.dlss.quality=QUALITY|BALANCED|PERFORMANCE|ULTRA_PERFORMANCE`.
 When using the patched VMR settings screen, the same enable, quality, and
 sharpness values are exposed under the Super Resolution page and written back
-to these properties. Changes take effect after restarting the renderer.
+to these properties. The settings page reinitializes the live resolver when
+applied.
+The same page exposes manual pre-exposure and exposure-scale values because
+the inspected Opal API does not publish an automatic scene-exposure value.
