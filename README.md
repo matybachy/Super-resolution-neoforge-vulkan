@@ -35,6 +35,11 @@ integration must call this core after the world pass and before
 native-resolution GUI rendering, providing actual Vulkan image views and a
 recording command buffer.
 
+`VulkanExtensionRegistrar` targets the added VMR
+`VulkanExtensionHooks` seam. NGX-discovered instance/device requirements must
+be registered before VMR initializes its Vulkan class; otherwise the core
+continues with the documented native-resolution fallback.
+
 ## Native SDK setup
 
 Build a private native library named `superresolution_dlss` against the NVIDIA
