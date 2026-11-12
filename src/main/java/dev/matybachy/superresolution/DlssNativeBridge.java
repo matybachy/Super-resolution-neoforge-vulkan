@@ -15,8 +15,8 @@ final class DlssNativeBridge {
     static native int initialize(long instance, long physicalDevice, long device,
                                  long getInstanceProcAddr, long getDeviceProcAddr);
 
-    static native int evaluate(long commandBuffer, long colorImageView, long depthImageView,
-                               long motionVectorImageView, long outputImageView, FrameInput input);
+    static native int evaluate(long commandBuffer, DlssImage color, DlssImage depth,
+                               DlssImage motionVectors, DlssImage output, FrameInput input);
 
     static native void reset();
 

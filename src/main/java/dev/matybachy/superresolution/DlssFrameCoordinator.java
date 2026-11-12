@@ -26,8 +26,8 @@ public final class DlssFrameCoordinator implements AutoCloseable {
         motionVectors.beginFrame(viewProjection);
     }
 
-    public boolean evaluateWorld(long commandBuffer, long colorImageView, long depthImageView,
-                                 long motionVectorImageView, long outputImageView,
+    public boolean evaluateWorld(long commandBuffer, DlssImage color, DlssImage depth,
+                                 DlssImage motionVectors, DlssImage output,
                                  FrameInput input) {
         if (resetHistory) {
             input = new FrameInput(input.jitterX(), input.jitterY(), input.motionVectorScaleX(),
@@ -36,8 +36,7 @@ public final class DlssFrameCoordinator implements AutoCloseable {
                     input.displayWidth(), input.displayHeight());
             resetHistory = false;
         }
-        return upscaler.evaluate(commandBuffer, colorImageView, depthImageView,
-                motionVectorImageView, outputImageView, input);
+        return upscaler.evaluate(commandBuffer, color, depth, motionVectors, output, input);
     }
 
     public void endWorldFrame() {

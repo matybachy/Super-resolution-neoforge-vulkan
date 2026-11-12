@@ -8,8 +8,8 @@ public interface DlssUpscaler extends AutoCloseable {
 
     boolean resize(int displayWidth, int displayHeight);
 
-    boolean evaluate(long commandBuffer, long colorImageView, long depthImageView,
-                     long motionVectorImageView, long outputImageView, FrameInput input);
+    boolean evaluate(long commandBuffer, DlssImage color, DlssImage depth,
+                     DlssImage motionVectors, DlssImage output, FrameInput input);
 
     void resetHistory();
 

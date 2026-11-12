@@ -61,21 +61,20 @@ public final class NativeDlssUpscaler implements DlssUpscaler {
     }
 
     @Override
-    public boolean evaluate(long commandBuffer, long colorImageView, long depthImageView,
-                            long motionVectorImageView, long outputImageView, FrameInput input) {
+    public boolean evaluate(long commandBuffer, DlssImage color, DlssImage depth,
+                            DlssImage motionVectors, DlssImage output, FrameInput input) {
         if (!initialized) {
             return fail("DLSS is not initialized");
         }
-        if (commandBuffer == 0 || colorImageView == 0 || depthImageView == 0
-                || motionVectorImageView == 0 || outputImageView == 0) {
+        if (commandBuffer == 0 || color == null || depth == null
+                || motionVectors == null || output == null) {
             return fail("DLSS input or output image is unavailable");
         }
         if (input.displayWidth() != displayWidth || input.displayHeight() != displayHeight) {
             return fail("frame dimensions do not match the initialized DLSS output");
         }
         try {
-            int result = DlssNativeBridge.evaluate(commandBuffer, colorImageView, depthImageView,
-                    motionVectorImageView, outputImageView, input);
+            int result = DlssNativeBridge.evaluate(commandBuffer, color, depth, motionVectors, output, input);
             if (result != 0) {
                 return fail("DLSS evaluation failed (" + result + ")");
             }

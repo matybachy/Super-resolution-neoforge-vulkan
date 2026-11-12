@@ -43,11 +43,23 @@ continues with the documented native-resolution fallback.
 ## Native SDK setup
 
 Build a private native library named `superresolution_dlss` against the NVIDIA
-NGX SDK and place it on the Java library path. The bridge must initialize NGX
+NGX SDK and place it on the Java library path. With the SDK checkout at
+`C:\dev\DLSS`, configure the native build with:
+
+```powershell
+cmake -S native -B native/build -DDLSS_SDK_DIR=C:/dev/DLSS
+cmake --build native/build --config Release
+```
+
+The CMake file reads headers from `C:\dev\DLSS\include` and links the Windows
+x64 import library from `C:\dev\DLSS\lib\Windows_x86_64\x64`. It does not copy
+those files into this repository. The bridge must initialize NGX
 with the application's Vulkan instance/device, query feature requirements
 before device creation, and translate the SDK resource/layout requirements
 into the VulkanMod command buffer.
 
-Do not copy NVIDIA SDK binaries or the upstream project's identifier into this
-repository. DLSS remains disabled, with a warning and native-resolution
-rendering, until the bridge and all required images are valid.
+Set `SUPERRESOLUTION_NGX_PROJECT_ID` to a project identifier authorized for
+this application. Do not reuse the upstream project's identifier. Do not copy
+NVIDIA SDK binaries or the upstream project's identifier into this repository.
+DLSS remains disabled, with a warning and native-resolution rendering, until
+the bridge and all required images are valid.
