@@ -18,10 +18,13 @@ import net.vulkanmod.vulkan.util.DrawUtil;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VkCommandBuffer;
 
+import java.util.logging.Logger;
+
 import static org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 import static org.lwjgl.vulkan.VK10.*;
 
 public class DefaultMainPass implements MainPass {
+    private static final Logger LOGGER = Logger.getLogger(DefaultMainPass.class.getName());
 
     public static DefaultMainPass create() {
         return new DefaultMainPass();
@@ -299,7 +302,13 @@ public class DefaultMainPass implements MainPass {
         if (DlssResolveHook.resolve(mainFramebuffer.getColorAttachment(), mainFramebuffer.getDepthAttachment(),
                 swapChain.getColorAttachment().width,
                 swapChain.getColorAttachment().height)) {
-            resolveImageToSwapchain(commandBuffer, DlssResolveHook.outputImage(), true);
+            try {
+                resolveImageToSwapchain(commandBuffer, DlssResolveHook.outputImage(), true);
+            } catch (RuntimeException error) {
+                LOGGER.warning("DLSS output presentation failed; using native-resolution resolve: "
+                        + error.getMessage());
+                resolveScaledFramebufferToSwapchain(commandBuffer, true);
+            }
             this.renderScaleResolvedThisFrame = true;
             this.targets.resolveForGui();
             selectTarget();
