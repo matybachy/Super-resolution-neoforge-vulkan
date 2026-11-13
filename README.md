@@ -77,7 +77,6 @@ from the page take effect at once; DLSS starts its history afresh with them.
 | `vanillaDepth` | `direct` | how VulkanMod Reforged's own depth is stored |
 | `handDepth` | `0.5625` | with a pack, depth below this is the hand, which moves with the camera |
 | `frameGeneration` | `off` | `off`, `x2` to `x6`: generated frames between the real ones (experimental, see below) |
-| `framePacing` | `0.5` | 0.0-0.9: how long a generated frame lasts against a real one; 0 gives the most frames, higher is more even |
 
 The jitter sign, the motion sign and the depth layouts are read from the code of VulkanMod Reforged and Opal Compat, not seen in a game; they are settings so that a
 wrong one can be fixed without a new build.
@@ -95,7 +94,12 @@ the render, and fills what the last frame did not see from the farthest of the n
 - The processor is spared the world on generated frames, and the camera moves at the full frame rate.
 - Spinning parts (Create's shafts and cogs), water, particles and animated textures keep the pace of the real frames. Nothing is generated
   while riding, after the camera jumps, or while DLSS does not run.
-- **Frame Pacing** (50 %): how long a generated frame lasts against a real one. 0 % gives the most frames, but long and short ones in turn.
+- 2x to 6x is the most. How many frames are generated is measured after every real frame: none while the real frames keep up with the
+  screen (its refresh rate, or the game's frame limit if lower), only as many as bring the frame rate up to it, and none while a generated
+  frame costs more than 60 % of a real one: it skips the world on the processor, but it still waits for what the graphics card has not
+  finished of the real frame before. One is generated every 3 s to see whether that changed. A generated frame lasts one frame of the
+  screen, so they come evenly. (Generating a fixed number regardless left 21 real frames a second at 6x in a pack bound by the card,
+  and the hand, held items and entities moved at that rate.)
 - Chunks are built and uploaded in real frames only, so the world loads more slowly with frame generation on.
 - The log says `[framegen]` every 10 s: generated and real frames, how long a real frame took, how long a generated one waited.
 
