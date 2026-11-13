@@ -52,8 +52,8 @@ final class MotionPass implements AutoCloseable {
 
 	/** Bytes of the push constants: a vec4, two ivec4 and a vec4. */
 	private static final int PUSH = 64;
-	/** Bytes of a frame's buffer: two matrices, then the entity boxes. */
-	private static final int HEADER = 128;
+	/** Bytes of a frame's buffer: two matrices and the camera's move, then the entity boxes. */
+	private static final int HEADER = 144;
 	private static final int FRAME_BYTES = align(HEADER + EntityMotion.MAX * EntityMotion.FLOATS * Float.BYTES, 256);
 
 	/** Hand modes: none, the game's own hand over a cleared depth, a shader pack's band of depth. */
@@ -70,16 +70,45 @@ final class MotionPass implements AutoCloseable {
 			layout(std430, binding = 3) readonly buffer Frame {
 			    mat4 inverseCurrent;   // this frame's clip space, jittered, to positions relative to the camera
 			    mat4 previous;         // those positions to the last upscaled frame's clip space, without jitter
+			    vec4 cameraMove;       // this frame's camera minus the last upscaled frame's (xyz), previousPlace holds that frame (w)
 			    vec4 boxes[];          // per moved entity: min, max, move
 			} frame;
 			layout(binding = 4) uniform sampler2D handDepth;
 			layout(binding = 5) uniform sampler2D distantDepth;
+			layout(binding = 6, rgba32f) uniform writeonly image2D placeOut;
+			layout(binding = 7, rgba16f) uniform writeonly image2D moveOut;
+			layout(binding = 8, rgba32f) uniform readonly image2D previousPlace;
 			layout(push_constant) uniform Push {
 			    vec4 jitterHandSign;   // jitter in clip space (xy), hand depth band (z), sign of motion y (w)
 			    ivec4 sizeFlipMode;    // size (xy), depth images upside down (z), depth mode (w)
 			    ivec4 handCount;       // hand mode (x), entity boxes (y), Distant Horizons' depth there (z)
 			    vec4 planes;           // the z row of DH's projection (xy) and of the game's (zw)
 			} pc;
+
+			// How far what the last upscaled frame saw, where this point (relative to this frame's camera) would have been
+			// on its screen, lies from the point: near nought if the last frame saw this very point there.
+			float missed(vec3 point, ivec2 size) {
+			    vec4 clip = frame.previous * vec4(point, 1.0);
+			    if (clip.w <= 1e-6) return 1e30;
+			    vec2 ndc = clip.xy / clip.w;
+			    vec2 uv = vec2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+			    if (any(lessThan(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))) return 1e30;
+			    vec4 was = imageLoad(previousPlace, min(ivec2(uv * vec2(size)), size - 1));
+			    if (abs(was.w - 1.0) > 0.5) return 1e30;
+			    return distance(was.xyz, point + frame.cameraMove.xyz);
+			}
+
+			// Whether a point in a moved entity's box is the entity's and not what stands around it: the box is grown for
+			// the model sticking out of the hit box, and holds grass, walls and ground beside the entity as well. The last
+			// frame saw the entity's points where they were before the move, and what stands still where it is now.
+			bool followsEntity(vec3 position, vec3 move, ivec2 size) {
+			    if (frame.cameraMove.w < 0.5) return false;
+			    float withEntity = missed(position - move, size);
+			    float inPlace = missed(position, size);
+			    float tolerance = max(0.15, 0.02 * length(position));
+			    return withEntity < tolerance && withEntity < 0.5 * inPlace;
+			}
+
 			void main() {
 			    ivec2 size = pc.sizeFlipMode.xy;
 			    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
@@ -122,17 +151,33 @@ final class MotionPass implements AutoCloseable {
 			    }
 			    imageStore(depthOut, pixel, vec4(hand ? 0.0 : dlssDepth, 0.0, 0.0, 0.0));
 			    vec2 motion = vec2(0.0);
+			    // For frame generation: the point of this pixel relative to this frame's camera (w 1), the direction of the
+			    // sky (w 0), or the hand, which keeps its place on the screen (w 2); and how far its entity moved since the
+			    // last upscaled frame.
+			    vec4 place = vec4(0.0, 0.0, 0.0, 2.0);
+			    vec3 moved = vec3(0.0);
 			    if (!hand) {
 			        vec2 ndc = vec2((float(pixel.x) + 0.5) / float(size.x) * 2.0 - 1.0,
 			                        1.0 - (float(pixel.y) + 0.5) / float(size.y) * 2.0);
+			        bool sky = nearToFar >= 1.0 && distantView >= 0.0;
 			        vec4 point = frame.inverseCurrent * vec4(ndc, z, 1.0);
 			        vec4 before = frame.previous * point;
+			        if (sky) {
+			            vec4 farPoint = frame.inverseCurrent * vec4(ndc, 1.0, 1.0);
+			            vec3 direction = abs(farPoint.w) > 1e-7 ? farPoint.xyz / farPoint.w : vec3(0.0);
+			            if (dot(direction, direction) > 1e-12) place = vec4(normalize(direction), 0.0);
+			        }
 			        if (abs(point.w) > 1e-7) {
 			            vec3 position = point.xyz / point.w;
+			            if (!sky) place = vec4(position, 1.0);
 			            for (int i = 0; i < pc.handCount.y; i++) {
 			                if (all(greaterThanEqual(position, frame.boxes[i * 3].xyz))
 			                        && all(lessThanEqual(position, frame.boxes[i * 3 + 1].xyz))) {
-			                    before = frame.previous * vec4(position - frame.boxes[i * 3 + 2].xyz, 1.0);
+			                    vec3 move = frame.boxes[i * 3 + 2].xyz;
+			                    // DLSS takes the whole box with the entity, as before: it only steers its history. A
+			                    // generated frame shows what it moves, so it moves only what the last frame confirms.
+			                    before = frame.previous * vec4(position - move, 1.0);
+			                    if (followsEntity(position, move, size)) moved = move;
 			                    break;
 			                }
 			            }
@@ -143,6 +188,8 @@ final class MotionPass implements AutoCloseable {
 			        }
 			    }
 			    imageStore(motionOut, pixel, vec4(motion, 0.0, 0.0));
+			    imageStore(placeOut, pixel, place);
+			    imageStore(moveOut, pixel, vec4(moved, 0.0));
 			}
 			""";
 
@@ -172,7 +219,8 @@ final class MotionPass implements AutoCloseable {
 
 			int[] types = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 					VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER};
+					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+					VK_DESCRIPTOR_TYPE_STORAGE_IMAGE};
 			VkDescriptorSetLayoutBinding.Buffer bindings = VkDescriptorSetLayoutBinding.calloc(types.length, stack);
 			for (int i = 0; i < types.length; i++) {
 				bindings.get(i).binding(i).descriptorType(types[i]).descriptorCount(1).stageFlags(VK_SHADER_STAGE_COMPUTE_BIT);
@@ -209,7 +257,7 @@ final class MotionPass implements AutoCloseable {
 
 			VkDescriptorPoolSize.Buffer sizes = VkDescriptorPoolSize.calloc(3, stack);
 			sizes.get(0).type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER).descriptorCount(3 * frames);
-			sizes.get(1).type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE).descriptorCount(2 * frames);
+			sizes.get(1).type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE).descriptorCount(5 * frames);
 			sizes.get(2).type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER).descriptorCount(frames);
 			check(vkCreateDescriptorPool(this.device, VkDescriptorPoolCreateInfo.calloc(stack).sType$Default()
 					.maxSets(frames).pPoolSizes(sizes), null, handle), "vkCreateDescriptorPool");
@@ -254,19 +302,23 @@ final class MotionPass implements AutoCloseable {
 	 */
 	void record(MemoryStack stack, VkCommandBuffer cmd, VulkanImage worldDepth, VulkanImage handDepth, int handMode,
 			OpalDepth.Distant distant, boolean upsideDown, SrvmrConfig.DepthMode mode, float handBand, VulkanImage motion,
-			VulkanImage depth, float jitterNdcX, float jitterNdcY, boolean invertMotionY) {
+			VulkanImage depth, VulkanImage place, VulkanImage previousPlace, boolean previousValid, VulkanImage moved,
+			float jitterNdcX, float jitterNdcY, boolean invertMotionY) {
 		int slot = Renderer.getCurrentFrame() % this.sets.length;
 		long set = this.sets[slot];
 		int base = slot * FRAME_BYTES;
 
 		DlssFrame.inverseCurrent(new Matrix4f()).get(base, this.mapped);
 		DlssFrame.previous(new Matrix4f()).get(base + 64, this.mapped);
+		float[] cameraMove = DlssFrame.cameraMove();
+		this.mapped.putFloat(base + 128, cameraMove[0]).putFloat(base + 132, cameraMove[1])
+				.putFloat(base + 136, cameraMove[2]).putFloat(base + 140, previousValid ? 1.0F : 0.0F);
 		int boxes = DlssFrame.entityCount();
 		for (int i = 0; i < boxes * EntityMotion.FLOATS; i++) {
 			this.mapped.putFloat(base + HEADER + i * Float.BYTES, EntityMotion.BOXES[i]);
 		}
 
-		VkWriteDescriptorSet.Buffer writes = VkWriteDescriptorSet.calloc(6, stack);
+		VkWriteDescriptorSet.Buffer writes = VkWriteDescriptorSet.calloc(9, stack);
 		writes.get(0).sType$Default().dstSet(set).dstBinding(0).descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 				.descriptorCount(1).pImageInfo(VkDescriptorImageInfo.calloc(1, stack).sampler(this.sampler)
 						.imageView(worldDepth.getImageView()).imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
@@ -286,6 +338,15 @@ final class MotionPass implements AutoCloseable {
 		writes.get(5).sType$Default().dstSet(set).dstBinding(5).descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 				.descriptorCount(1).pImageInfo(VkDescriptorImageInfo.calloc(1, stack).sampler(this.sampler)
 						.imageView(far.getImageView()).imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		writes.get(6).sType$Default().dstSet(set).dstBinding(6).descriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+				.descriptorCount(1).pImageInfo(VkDescriptorImageInfo.calloc(1, stack)
+						.imageView(place.getImageView()).imageLayout(VK_IMAGE_LAYOUT_GENERAL));
+		writes.get(7).sType$Default().dstSet(set).dstBinding(7).descriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+				.descriptorCount(1).pImageInfo(VkDescriptorImageInfo.calloc(1, stack)
+						.imageView(moved.getImageView()).imageLayout(VK_IMAGE_LAYOUT_GENERAL));
+		writes.get(8).sType$Default().dstSet(set).dstBinding(8).descriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+				.descriptorCount(1).pImageInfo(VkDescriptorImageInfo.calloc(1, stack)
+						.imageView(previousPlace.getImageView()).imageLayout(VK_IMAGE_LAYOUT_GENERAL));
 		vkUpdateDescriptorSets(this.device, writes, null);
 
 		ByteBuffer push = stack.calloc(PUSH);

@@ -35,5 +35,17 @@
   "srvmr.depth.forward": "Forward",
   "srvmr.depth.direct": "Direct",
   "srvmr.depth.reversed": "Reversed",
-  "srvmr.scale.ultra": "%s %% (Ultra Performance)"
+  "srvmr.scale.ultra": "%s %% (Ultra Performance)",
+  "srvmr.block.framegen": "Frame generation (experimental)",
+  "srvmr.option.frameGeneration": "Frame Generation",
+  "srvmr.option.frameGeneration.tooltip": "Shows 1 to 5 frames between the real ones without drawing the world: the last DLSS picture is moved to where the camera is now, and moving entities by their own motion. Saves the processor the world on those frames. Only while DLSS runs. Spinning parts, water and particles keep the real frames' pace; off while riding.",
+  "srvmr.framegen.off": "Off",
+  "srvmr.framegen.x2": "2x",
+  "srvmr.framegen.x3": "3x",
+  "srvmr.option.framePacing": "Frame Pacing",
+  "srvmr.option.framePacing.tooltip": "How long a generated frame lasts against a real one. 0 % gives the most frames but long and short ones in turn; higher is more even and gives fewer. 50 % is a middle way.",
+  "srvmr.pacing.value": "%s %%",
+  "srvmr.framegen.x4": "4x",
+  "srvmr.framegen.x5": "5x",
+  "srvmr.framegen.x6": "6x"
 }

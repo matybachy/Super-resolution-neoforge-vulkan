@@ -79,6 +79,7 @@ public final class DlssFrame {
 	}
 
 	private static void planWorld() {
+		long start = System.nanoTime();
 		// A frame planned for DLSS that never reached the resolve would otherwise leave the jitter on with nothing to
 		// undo it.
 		if (planned) DlssResolve.unresolved();
@@ -86,28 +87,17 @@ public final class DlssFrame {
 		planned = false;
 		captured = false;
 		worldDepth = null;
+		FrameGen.beginFrame(start);
 		SrvmrConfig config = SrvmrConfig.get();
-		if (!config.enabled || Ngx.failed()) return;
-		Minecraft minecraft = Minecraft.getInstance();
-		// A panorama screenshot turns the camera every frame: nothing of it is for DLSS.
-		if (minecraft.screen != null || minecraft.level == null || minecraft.gameRenderer.isPanoramicMode()) return;
-		Renderer renderer = Renderer.getInstance();
-		SwapChain swapChain = Vulkan.getSwapChain();
-		if (renderer == null || swapChain == null) return;
-		MainPass pass = renderer.getMainPass();
-		VulkanImage color = pass != null ? pass.getColorAttachment() : null;
-		if (color == null) return;
-		int width = swapChain.getWidth();
-		int height = swapChain.getHeight();
-		if (width <= 0 || height <= 0 || color.width >= width && color.height >= height) return;
-		if (!DlssResolve.wanted(color.width, color.height, width, height)) return;
-		renderWidth = color.width;
-		renderHeight = color.height;
-		outputWidth = width;
-		outputHeight = height;
+		if (!forDlss(config)) {
+			FrameGen.forget();
+			return;
+		}
+		// A generated frame draws no world, so it is not jittered and DLSS does not run for it.
+		if (FrameGen.decide(renderWidth, renderHeight, outputWidth, outputHeight)) return;
 		planned = true;
 		if (config.jitter) {
-			double scale = (double) width / renderWidth * height / renderHeight;
+			double scale = (double) outputWidth / renderWidth * outputHeight / renderHeight;
 			long phases = Math.max(8L, (long) Math.ceil(8.0 * scale));
 			long index = sequence++ % phases + 1;
 			jitterX = halton(index, 2) - 0.5F;
@@ -116,6 +106,41 @@ public final class DlssFrame {
 			jitterX = 0.0F;
 			jitterY = 0.0F;
 		}
+	}
+
+	/** Whether this frame is drawn at VulkanMod Reforged's Render Scale for DLSS; the sizes are kept if it is. */
+	private static boolean forDlss(SrvmrConfig config) {
+		if (!config.enabled || Ngx.failed()) return false;
+		Minecraft minecraft = Minecraft.getInstance();
+		// A panorama screenshot turns the camera every frame: nothing of it is for DLSS.
+		if (minecraft.screen != null || minecraft.level == null || minecraft.gameRenderer.isPanoramicMode()) return false;
+		Renderer renderer = Renderer.getInstance();
+		SwapChain swapChain = Vulkan.getSwapChain();
+		if (renderer == null || swapChain == null) return false;
+		MainPass pass = renderer.getMainPass();
+		VulkanImage color = pass != null ? pass.getColorAttachment() : null;
+		if (color == null) return false;
+		int width = swapChain.getWidth();
+		int height = swapChain.getHeight();
+		if (width <= 0 || height <= 0 || color.width >= width && color.height >= height) return false;
+		if (!DlssResolve.wanted(color.width, color.height, width, height)) return false;
+		renderWidth = color.width;
+		renderHeight = color.height;
+		outputWidth = width;
+		outputHeight = height;
+		return true;
+	}
+
+	static double cameraX() {
+		return cameraX;
+	}
+
+	static double cameraY() {
+		return cameraY;
+	}
+
+	static double cameraZ() {
+		return cameraZ;
 	}
 
 	/** {@code GameRenderer.getProjectionMatrix} RETURN: the projection moved by this frame's jitter. */
@@ -220,6 +245,12 @@ public final class DlssFrame {
 		if (reset()) return dest.set(unjittered(new Matrix4f(PROJECTION))).mul(MODEL_VIEW);
 		return dest.set(PREVIOUS_PROJECTION).mul(PREVIOUS_MODEL_VIEW)
 				.translate((float) (cameraX - previousX), (float) (cameraY - previousY), (float) (cameraZ - previousZ));
+	}
+
+	/** This frame's camera minus the last upscaled frame's; nought on a frame DLSS starts afresh. */
+	static float[] cameraMove() {
+		if (reset()) return new float[3];
+		return new float[] {(float) (cameraX - previousX), (float) (cameraY - previousY), (float) (cameraZ - previousZ)};
 	}
 
 	/** How many entity boxes to use: none on a frame DLSS starts afresh. */
