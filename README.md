@@ -4,7 +4,8 @@ NVIDIA DLSS Super Resolution for [VulkanMod Reforged](https://github.com/TrulyRi
 and without [Opal Compat](https://github.com/matybachy/opal-shaders-compat) shader packs. Nothing of VulkanMod Reforged or Opal Compat is patched or copied: the mod hooks
 them with mixins and reflection.
 
-Status: **alpha, never run.** It is built and checked statically; whether DLSS starts, and how the picture looks, is only known from the game.
+Status: **alpha.** DLSS has run on a GeForce RTX 5060 Ti with VulkanMod Reforged 0.3.5 (Performance, 1280x720 to 2560x1440); other GPUs, packs and
+settings are untried.
 
 ## Requirements
 
@@ -18,7 +19,7 @@ Status: **alpha, never run.** It is built and checked statically; whether DLSS s
 
 ## Use
 
-1. Put the jar in `mods`.
+1. Build the jar (see [Building](#building); there is none to download) and put it in `mods`.
 2. In VulkanMod Reforged's Video Settings, on the **DLSS** page, turn DLSS on and set **Render Scale** below 100 %: 65-70 % for DLSS Quality,
    55-60 % Balanced, 45-50 % Performance, 33-40 % Ultra Performance. VulkanMod Reforged's own floor is 50 %; with DLSS on the mod lets the scale go
    down to 33 % (`RenderScaleMixin`), and with DLSS off or failed the 50 % floor holds again. DLSS picks the mode that fits the scale unless one is
@@ -84,13 +85,55 @@ wrong one can be fixed without a new build.
 ## Building
 
 The NVIDIA DLSS SDK is not in this repository, and nothing built from it may be committed: NVIDIA's licence does not allow the SDK to become subject to an
-open-source licence, and this repository is GPL. Jars built with DLSS are for the builder's own use.
+open-source licence (section 3 e of the SDK's `LICENSE.txt`), and this repository is GPL. That is why there is no jar to download here: every jar with DLSS
+is built from the steps below, and is for the builder's own use.
 
-1. Get the [DLSS SDK](https://github.com/NVIDIA/DLSS) (headers, `lib/Windows_x86_64/x64/nvsdk_ngx_s.lib`, `lib/Windows_x86_64/rel/nvngx_dlss.dll`) and the
-   [Vulkan headers](https://github.com/KhronosGroup/Vulkan-Headers). Using the SDK means accepting NVIDIA's licence.
-2. Build the bridge (Visual Studio with C++ tools, CMake): `native\build-windows.cmd <DLSS SDK> <Vulkan-Headers> [JDK 21]`. See [native/README.md](native/README.md).
-3. `gradlew build -x test` with `dlssSdkDir` and `nativeBridge` in `gradle.properties` (or `-P`) pointing at the SDK and at `native/build/srvmr_ngx.dll`. Without
-   them the jar is built without DLSS and says so in the log.
+### What you need
+
+- Windows x64 and [Git for Windows](https://git-scm.com/download/win) (with Git Bash).
+- Visual Studio 2022 or newer, or its Build Tools, with the x64 C++ tools (the workload *Desktop development with C++*), and CMake 3.20 or newer: the
+  workload's own or one on `PATH`.
+- A JDK 21, whose JNI headers the bridge is built with.
+
+### 1. Download the NVIDIA files
+
+In Git Bash, in this repository:
+
+```bash
+bash native/get-sdk.sh
+```
+
+[`native/get-sdk.sh`](native/get-sdk.sh) downloads only the files the build uses, about 60 MB, into `dlss-build-deps` next to this repository (another folder
+can be given as its argument):
+
+| Folder | From | Files |
+|---|---|---|
+| `dlss-build-deps/DLSS` | [NVIDIA/DLSS](https://github.com/NVIDIA/DLSS), tag `v310.9.16` | `LICENSE.txt`, `include/`, `lib/Windows_x86_64/x64/nvsdk_ngx_s.lib` (and `_d`), `lib/Windows_x86_64/rel/nvngx_dlss.dll` |
+| `dlss-build-deps/Vulkan-Headers` | [KhronosGroup/Vulkan-Headers](https://github.com/KhronosGroup/Vulkan-Headers), tag `v1.4.368` | `include/`, `LICENSE.md`, `LICENSES/` |
+
+Downloading the DLSS SDK means accepting NVIDIA's licence, its `LICENSE.txt`. Without Git Bash, download both repositories at those tags by any other way and
+keep the same folders.
+
+### 2. Build the bridge
+
+In cmd or PowerShell; the script prints this line with the paths filled in:
+
+```
+native\build-windows.cmd C:\path\to\dlss-build-deps\DLSS C:\path\to\dlss-build-deps\Vulkan-Headers "C:\path\to\jdk-21"
+```
+
+It writes `native\build\srvmr_ngx.dll`. The JDK folder can be left out when `JAVA_HOME` is a JDK 21. More in [native/README.md](native/README.md).
+
+### 3. Build the jar
+
+```
+gradlew build -x test
+```
+
+`gradle.properties` already looks for the SDK in `../dlss-build-deps/DLSS` (`dlssSdkDir`) and for the bridge in `native/build/srvmr_ngx.dll`
+(`nativeBridge`); for other folders set those two there or pass `-PdlssSdkDir=... -PnativeBridge=...`, with forward slashes. The jar,
+`build/libs/srvmr-<version>.jar`, carries `srvmr_ngx.dll`, `nvngx_dlss.dll` and NVIDIA's licence in `natives/windows-x64/`. If either DLL is missing the build
+says `srvmr: no native bridge ... the jar has no DLSS` and the jar runs without DLSS.
 
 ## Licence
 
