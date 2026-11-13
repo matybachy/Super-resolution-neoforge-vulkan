@@ -1,5 +1,0 @@
-settle
-wait 40
-shot basic
-dump basic
-wait 5

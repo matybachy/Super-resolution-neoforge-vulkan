@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.matybachy.srvmr.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "VulkanLifecycleMixin",
+    "DeviceExtensionsMixin",
+    "GameRendererJitterMixin",
+    "LevelRendererCaptureMixin",
+    "DefaultMainPassMixin",
+    "OptionScreenAccessor",
+    "CrashReportFileNameMixin",
+    "RenderScaleMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

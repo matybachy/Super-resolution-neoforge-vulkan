@@ -1,30 +1,18 @@
-# Private DLSS native bridge
+# Native bridge
 
-The native bridge in this directory requires a private NVIDIA NGX SDK checkout.
-The SDK is proprietary and must be obtained separately under NVIDIA's license.
+`src/srvmr_ngx.cpp` is a small JNI library between the mod (`dev.matybachy.srvmr.ngx.NgxBridge`) and NVIDIA NGX. It owns no Vulkan objects: the instance, the device,
+the command buffer and the images are VulkanMod Reforged's, and only their handles are passed on.
 
-Implement the JNI methods declared by
-`dev.matybachy.superresolution.DlssNativeBridge` in a private native library
-named `superresolution_dlss`. The implementation must:
+It is linked statically against `nvsdk_ngx_s.lib` from the DLSS SDK and the static Visual C++ runtime, so the DLL depends on nothing but Windows itself.
 
-1. query NGX Vulkan instance and device extension requirements before the
-   Vulkan instance/device are created;
-2. initialize and shut down NGX without assuming the upstream project's
-   application/project identifier is authorized for this project;
-3. evaluate only with valid color, depth, camera-motion-vector, and output
-   image views in layouts accepted by the selected SDK;
-4. return a non-zero status on every failure so Java keeps native-resolution
-   rendering active.
+```
+native\build-windows.cmd C:\path\to\DLSS C:\path\to\Vulkan-Headers "C:\Program Files\Zulu\zulu-21"
+```
 
-Do not commit the SDK, headers, libraries, DLLs, or generated binaries.
+writes `native\build\srvmr_ngx.dll`. The script finds Visual Studio's C++ tools through `vswhere`, then runs CMake with the NMake generator.
 
-On Windows, run `build-windows.ps1 -DlssSdkDir C:\dev\DLSS` from this
-directory. The script configures and builds the bridge, then reports the DLL
-directories that must be placed on `PATH` at runtime.
+What it exports: `deviceExtensions` (the device extensions NGX lists for DLSS on this GPU, before the device exists), `init` (NGX on VulkanMod Reforged's device,
+with this project's own NGX project id and engine type `CUSTOM`), `availability`, `renderSizes` (DLSS's optimal settings), `create`, `evaluate`, `release`,
+`shutdown`, `lastResult`.
 
-To launch a Java-based Minecraft profile with the bridge, put its complete
-argument list (one argument per line) in a file and run
-`run-with-dlss.ps1 -ProjectId <authorized-id> -JavaArgumentsFile <path>`.
-The wrapper sets `SUPERRESOLUTION_NGX_PROJECT_ID`, prepends the bridge and NGX
-runtime directories to `PATH`, and never stores the project ID in the
-repository.
+The built DLL contains NVIDIA's code and is never committed (`.gitignore`).

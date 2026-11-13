@@ -1,4 +1,0 @@
-# Does the game come up and stay up.
-settle
-wait 200
-shot np_world

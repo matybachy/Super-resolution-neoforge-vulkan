@@ -1,0 +1,10 @@
+build/
+.gradle/
+run/
+.idea/
+libs/
+*.log
+# NVIDIA's code and what is built from it is never committed: see README.md.
+native/build/
+*.dll
+*.lib

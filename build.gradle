@@ -1,13 +1,53 @@
 plugins {
     id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.141'
 }
 
-group = 'dev.matybachy'
-version = '0.1.0-alpha'
+version = project.mod_version
+group = project.mod_group_id
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+base {
+    archivesName = project.mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+// VulkanMod Reforged: the release jar, fetched once and verified. See gradle.properties.
+def vulkanModJar = file("libs/VulkanMod-Reforged-${project.vulkanmod_version}.jar")
+if (!vulkanModJar.isFile()) {
+    def name = "VulkanMod-Reforged-${project.vulkanmod_version}.jar"
+    def url = "https://github.com/TrulyRin/VulkanMod-Reforged/releases/download/${project.vulkanmod_tag}/" +
+            URLEncoder.encode(name, 'UTF-8').replace('+', '%2B')
+    logger.lifecycle("Downloading ${url}")
+    vulkanModJar.parentFile.mkdirs()
+    def tmp = new File(vulkanModJar.path + '.part')
+    new URL(url).withInputStream { input -> tmp.withOutputStream { it << input } }
+    def digest = java.security.MessageDigest.getInstance('SHA-256').digest(tmp.bytes).encodeHex().toString()
+    if (digest != project.vulkanmod_sha256) {
+        tmp.delete()
+        throw new GradleException("VulkanMod Reforged jar checksum mismatch: ${digest}")
+    }
+    tmp.renameTo(vulkanModJar)
+}
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        client {
+            client()
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
     }
 }
 
@@ -15,13 +55,48 @@ repositories {
     mavenCentral()
 }
 
+dependencies {
+    // On the runtime classpath as a mod jar; its own jar-in-jar carries LWJGL Vulkan and shaderc.
+    implementation files(vulkanModJar)
+    compileOnly "org.lwjgl:lwjgl-vulkan:${project.lwjgl_version}"
+    compileOnly "org.lwjgl:lwjgl-shaderc:${project.lwjgl_version}"
+}
+
+def resourceProps = [
+        minecraft_version_range: project.minecraft_version_range,
+        neo_version_range      : project.neo_version_range,
+        vulkanmod_version      : project.vulkanmod_version,
+        mod_id                 : project.mod_id,
+        mod_name               : project.mod_name,
+        mod_version            : project.mod_version,
+        mod_license            : project.mod_license,
+]
+
+// The DLSS runtime and the bridge built against the SDK go into the jar from where they are on this computer. They are
+// NVIDIA's code or contain it, so they are never committed: see README.md.
+def dlssRuntime = file("${project.dlssSdkDir}/lib/Windows_x86_64/rel/nvngx_dlss.dll")
+def dlssLicence = file("${project.dlssSdkDir}/LICENSE.txt")
+def bridge = file(project.nativeBridge)
+
+processResources {
+    inputs.properties resourceProps
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand resourceProps
+    }
+    if (bridge.isFile() && dlssRuntime.isFile()) {
+        from(bridge) { into 'natives/windows-x64' }
+        from(dlssRuntime) { into 'natives/windows-x64' }
+        from(dlssLicence) { into 'natives/windows-x64'; rename { 'NVIDIA-DLSS-SDK-LICENSE.txt' } }
+    } else {
+        logger.warn("srvmr: no native bridge (${bridge}) or DLSS runtime (${dlssRuntime}); the jar has no DLSS")
+    }
+}
+
 tasks.withType(JavaCompile).configureEach {
-    options.release = 21
     options.encoding = 'UTF-8'
+    options.release = 21
 }
 
 jar {
-    from('LICENSE-superresolution') {
-        rename { 'LICENSE-superresolution' }
-    }
+    from(layout.projectDirectory.file('LICENSE')) { rename { "${it}_${project.mod_id}" } }
 }

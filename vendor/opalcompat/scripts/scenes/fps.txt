@@ -1,6 +1,0 @@
-# A fixed view measured for a while.
-settle
-wait 40
-fps view 10
-shot fps_view
-error
