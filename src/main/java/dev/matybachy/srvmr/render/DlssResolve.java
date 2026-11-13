@@ -281,6 +281,7 @@ public final class DlssResolve {
 	 * let go of the device first. The images are VulkanMod Reforged's own kind and go with its memory.
 	 */
 	public static void shutdown() {
+		TextureBias.shutdown();
 		try {
 			if (feature == 0L && motionPass == null && Ngx.failed()) return;
 			Vulkan.waitIdle();
@@ -384,15 +385,33 @@ public final class DlssResolve {
 		return handle;
 	}
 
+	private static final SrvmrConfig.Quality[] ANY = {SrvmrConfig.Quality.QUALITY, SrvmrConfig.Quality.BALANCED,
+			SrvmrConfig.Quality.PERFORMANCE, SrvmrConfig.Quality.ULTRA_PERFORMANCE, SrvmrConfig.Quality.DLAA};
+
 	/**
-	 * The quality whose range of render sizes holds this one: the one asked for, or with {@code auto} the one whose
-	 * optimal size is nearest. -1 where none does.
+	 * The quality whose range of render sizes holds this one: the one asked for if the size is in its range, otherwise (and
+	 * with {@code auto}) the one whose optimal size is nearest. -1 where none does.
+	 * <p>
+	 * A mode asked for at a Render Scale it is not made for gives way: NGX gives each mode a model of its own for its own
+	 * ratio (in DLSS 310.9.16 Preset L for Ultra Performance's third of the screen, Preset M for Performance's half, as its
+	 * log says), and Ultra Performance at a Render Scale of 50 % had a model for a third upscale a half.
 	 */
 	private static int quality(int renderWidth, int renderHeight, int outputWidth, int outputHeight, SrvmrConfig.Quality wanted) {
-		SrvmrConfig.Quality[] candidates = wanted == SrvmrConfig.Quality.AUTO
-				? new SrvmrConfig.Quality[] {SrvmrConfig.Quality.QUALITY, SrvmrConfig.Quality.BALANCED,
-						SrvmrConfig.Quality.PERFORMANCE, SrvmrConfig.Quality.ULTRA_PERFORMANCE, SrvmrConfig.Quality.DLAA}
-				: new SrvmrConfig.Quality[] {wanted};
+		if (wanted != SrvmrConfig.Quality.AUTO) {
+			int asked = quality(renderWidth, renderHeight, outputWidth, outputHeight, new SrvmrConfig.Quality[] {wanted}, false);
+			if (asked >= 0) return asked;
+			int fits = quality(renderWidth, renderHeight, outputWidth, outputHeight, ANY, true);
+			if (fits >= 0 && fits != wanted.ngx) {
+				Srvmr.LOGGER.info("[dlss] {} is not made for {}x{} of {}x{}; using {}, which the Render Scale fits",
+						name(wanted.ngx), renderWidth, renderHeight, outputWidth, outputHeight, name(fits));
+			}
+			return fits;
+		}
+		return quality(renderWidth, renderHeight, outputWidth, outputHeight, ANY, true);
+	}
+
+	private static int quality(int renderWidth, int renderHeight, int outputWidth, int outputHeight,
+			SrvmrConfig.Quality[] candidates, boolean nearestWhenNone) {
 		int best = -1;
 		long bestDistance = Long.MAX_VALUE;
 		int nearest = -1;
@@ -418,7 +437,7 @@ public final class DlssResolve {
 		// VulkanMod Reforged's scale rounds its own way and NGX's ranges can be one size wide: a render size outside every
 		// range goes to the mode it is nearest, which DLSS takes as a ratio of its own (as with DLSS set to a custom
 		// ratio); only if creating it fails is the size given up.
-		if (best < 0 && nearest >= 0) {
+		if (best < 0 && nearest >= 0 && nearestWhenNone) {
 			Srvmr.LOGGER.info("[dlss] {}x{} for {}x{} is outside the ranges NGX lists; trying {}", renderWidth, renderHeight,
 					outputWidth, outputHeight, name(nearest));
 			return nearest;

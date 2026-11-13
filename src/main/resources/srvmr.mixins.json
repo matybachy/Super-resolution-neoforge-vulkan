@@ -11,7 +11,8 @@
     "DefaultMainPassMixin",
     "OptionScreenAccessor",
     "CrashReportFileNameMixin",
-    "RenderScaleMixin"
+    "RenderScaleMixin",
+    "SamplerManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

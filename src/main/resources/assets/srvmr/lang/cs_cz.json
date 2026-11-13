@@ -11,7 +11,7 @@
   "srvmr.scale.balanced": "%s %% (Vyvážený)",
   "srvmr.scale.performance": "%s %% (Výkon)",
   "srvmr.option.quality": "Režim",
-  "srvmr.option.quality.tooltip": "Automaticky vybere režim DLSS, který sedí k Render Scale.",
+  "srvmr.option.quality.tooltip": "Automaticky vybere režim DLSS, který sedí k Render Scale. Zvolený režim se použije, dokud k němu Render Scale sedí; při jiném se použije ten, který sedí, protože DLSS má pro každý režim model stavěný na jeho vlastní poměr.",
   "srvmr.quality.auto": "Automaticky",
   "srvmr.quality.quality": "Kvalita",
   "srvmr.quality.balanced": "Vyvážený",

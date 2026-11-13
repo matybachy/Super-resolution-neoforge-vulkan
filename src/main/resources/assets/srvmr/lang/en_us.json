@@ -11,7 +11,7 @@
   "srvmr.scale.balanced": "%s %% (Balanced)",
   "srvmr.scale.performance": "%s %% (Performance)",
   "srvmr.option.quality": "Mode",
-  "srvmr.option.quality.tooltip": "Auto takes the DLSS mode that fits the Render Scale.",
+  "srvmr.option.quality.tooltip": "Auto takes the DLSS mode that fits the Render Scale. A mode chosen here is used while the Render Scale fits it; at another scale the mode that fits is used, since DLSS has a model made for each mode's own scale.",
   "srvmr.quality.auto": "Auto",
   "srvmr.quality.quality": "Quality",
   "srvmr.quality.balanced": "Balanced",

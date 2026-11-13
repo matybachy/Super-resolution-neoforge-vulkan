@@ -24,7 +24,9 @@ settings are untried.
    55-60 % Balanced, 45-50 % Performance, 33-40 % Ultra Performance. VulkanMod Reforged's own floor is 50 %; with DLSS on the mod lets the scale go
    down to 33 % (`RenderScaleMixin`), and with DLSS off or failed the 50 % floor holds again. DLSS picks the mode that fits the scale unless one is
    chosen. The same Render Scale is on VulkanMod Reforged's own page, which shows 50 % at most for a lower scale.
-3. With a shader pack, turn the pack's own TAA off if it has one: DLSS does that job, and the two jitter the picture against each other.
+3. With a shader pack, turn the pack's own TAA off if it has one: DLSS does that job, and the two jitter the picture against each other. Complementary
+   (option *Temporal Filtering*, which its detail quality *High* turns on) keeps at least 75 % of the last frame on Distant Horizons' terrain
+   (`lib/antialiasing/taa.glsl`, `lodChunk`), so with DLSS on top the far terrain blurs more than anything else.
 
 DLSS runs while the world is drawn at the Render Scale, which is when no screen is open. With a screen open (inventory, chat) VulkanMod Reforged draws at full
 size and DLSS waits.
@@ -43,6 +45,10 @@ VulkanMod Reforged draws the world into a target of its Render Scale and, before
 - takes the depth of the world from Opal Compat (`depthtex0`) with a pack, Distant Horizons' far terrain from Opal Compat's DH depth and the planes DH drew
   with, and without a pack copies VulkanMod Reforged's depth just before the game clears it to draw the hand (with VulkanMod Reforged's own
   `MainDepthSnapshot`); the hand gets no motion, since it moves with the camera;
+- with Distant Horizons, hands DLSS one depth for the near and the far terrain, with the game's near plane and DH's far plane: the game's own depth stops at its
+  far plane, where the sky is too, and DLSS could not tell far terrain from sky when deciding which history to throw away;
+- gives textures a mip bias of log2(Render Scale) on top of VulkanMod Reforged's own -0.5 (`SamplerManagerMixin`), so they are sampled at the mip level the
+  screen would take and not one for the smaller picture (at 33 % that is 1.6 levels sharper); the log says `texture mip bias` when it changes;
 - in the resolve, has DLSS write a full-size picture from the scaled colour, the depth and the motion vectors, and binds that picture where VulkanMod Reforged
   would bind the scaled colour (`DefaultMainPassMixin`). The GUI is drawn over it at full size, as before.
 
@@ -61,7 +67,7 @@ from the page take effect at once; DLSS starts its history afresh with them.
 | Key | Default | |
 |---|---|---|
 | `enabled` | `true` | `false` leaves everything to VulkanMod Reforged |
-| `quality` | `auto` | `auto`, `quality`, `balanced`, `performance`, `ultra_performance`, `dlaa` |
+| `quality` | `auto` | `auto`, `quality`, `balanced`, `performance`, `ultra_performance`, `dlaa`; a mode the Render Scale is not made for gives way to the one it is (NGX has a model for each mode's own ratio) |
 | `jitter` | `true` | the sub-pixel jitter; DLSS needs it for detail |
 | `invertJitterX`, `invertJitterY` | `false` | the sign of the jitter DLSS is told; try if the picture shimmers when standing still |
 | `invertMotionY` | `false` | the sign of the vertical motion; try if the picture smears when looking up and down |
