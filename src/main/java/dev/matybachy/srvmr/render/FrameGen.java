@@ -32,8 +32,15 @@ import static org.lwjgl.vulkan.VK10.*;
  * entities that move as a whole and keep the real frames' pace. Nothing is generated while riding (the thing ridden
  * would shake against the camera), after the camera jumped, or until DLSS has upscaled a frame of the current sizes.
  * <p>
- * A generated frame is much quicker than a real one, so they would alternate long and short. It waits until it has
- * lasted {@code framePacing} of a real frame: 0 is the most frames, higher is more even.
+ * How many frames to generate is measured, not set: {@code frameGeneration} is the most. A generated frame skips the
+ * world on the processor, but it still waits for whatever the graphics card has not finished of the real frame before,
+ * and the rest of a frame (ticks, GUI, presenting) is the same. In a modpack whose frames are bound by the card a
+ * generated frame cost more than a real one (7.4 ms real against some 10 ms generated at 2x; at 6x only 21 real frames
+ * a second were left, so the hand, held items and entities, which change with real frames only, moved at 21 fps). So
+ * after each real frame, frames are generated only while the real ones do not keep up with the screen (its refresh
+ * rate, or the game's frame limit if lower), only as many as bring the frame rate up to it, and none while a generated
+ * frame costs more than 60 % of a real one or nearly a whole frame of the screen; then one is generated every few
+ * seconds to see whether that changed. A generated frame lasts one frame of the screen, so they come evenly.
  */
 public final class FrameGen {
 
@@ -62,13 +69,29 @@ public final class FrameGen {
 	private static double realY;
 	private static double realZ;
 
+	/** Kinds of the last frame, for measuring it at the start of the next. */
+	private static final int OTHER = 0;
+	private static final int REAL = 1;
+	private static final int GENERATED = 2;
+	/** A generated frame costing more than this share of a real one is not worth it. */
+	private static final double WORTH = 0.6;
+	/** How often a generated frame is made to see what one costs now, while none is worth it. */
+	private static final long PROBE_EVERY = TimeUnit.SECONDS.toNanos(3);
+
 	private static long frameStart;
 	private static long lastFrameStart;
-	private static boolean lastFrameReal;
+	private static int lastKind;
+	/** What the last generated frame waited for evenness: not part of what it costs. */
+	private static long lastWaited;
 	private static long realStart;
 	private static long previousRealStart;
 	/** How long a real frame lasts, smoothed. */
 	private static double realNanos;
+	/** How long a generated frame lasts without its wait, smoothed. */
+	private static double generatedNanos;
+	private static long probedAt;
+	/** Generated frames after the last real one, as planned; for the log. */
+	private static int planned;
 
 	private static double cameraX;
 	private static double cameraY;
@@ -100,13 +123,19 @@ public final class FrameGen {
 
 	/** {@code GameRenderer.renderLevel} HEAD, every frame. */
 	static void beginFrame(long now) {
-		if (lastFrameReal && lastFrameStart != 0L) {
+		if (lastFrameStart != 0L) {
 			long spent = now - lastFrameStart;
 			if (spent > 0L && spent < TimeUnit.MILLISECONDS.toNanos(250)) {
-				realNanos = realNanos == 0.0 ? spent : realNanos * 0.8 + spent * 0.2;
+				if (lastKind == REAL) {
+					realNanos = realNanos == 0.0 ? spent : realNanos * 0.8 + spent * 0.2;
+				} else if (lastKind == GENERATED) {
+					long cost = Math.max(0L, spent - lastWaited);
+					generatedNanos = generatedNanos == 0.0 ? cost : generatedNanos * 0.8 + cost * 0.2;
+				}
 			}
 		}
-		lastFrameReal = false;
+		lastKind = OTHER;
+		lastWaited = 0L;
 		lastFrameStart = now;
 		frameStart = now;
 		generating = false;
@@ -162,9 +191,43 @@ public final class FrameGen {
 		realZ = z;
 		previousRealStart = realStart;
 		realStart = frameStart;
-		lastFrameReal = true;
-		remaining = SrvmrConfig.get().frameGeneration.extra;
+		lastKind = REAL;
+		int most = SrvmrConfig.get().frameGeneration.extra;
+		remaining = plan(most);
+		planned = remaining;
 		realCount++;
+		// Also when nothing is generated, so that the log says why.
+		if (most > 0) report();
+	}
+
+	/** How many frames to generate after this real one: up to {@code most}, and only as many as help. */
+	private static int plan(int most) {
+		if (most <= 0 || realNanos <= 0.0) return 0;
+		double screen = screenNanos();
+		// The real frames keep up with the screen already: more frames would not be shown.
+		if (realNanos <= screen * 1.05) return 0;
+		long now = System.nanoTime();
+		if (generatedNanos <= 0.0) {
+			probedAt = now;
+			return 1;
+		}
+		if (generatedNanos >= realNanos * WORTH || generatedNanos >= screen * 0.9) {
+			if (now - probedAt < PROBE_EVERY) return 0;
+			probedAt = now;
+			return 1;
+		}
+		int wanted = (int) Math.ceil((realNanos - screen) / (screen - generatedNanos));
+		return Math.max(1, Math.min(most, wanted));
+	}
+
+	/** One frame of the screen: its refresh rate, or the game's frame limit where that is lower (260 is unlimited). */
+	private static double screenNanos() {
+		Minecraft minecraft = Minecraft.getInstance();
+		int fps = minecraft.getWindow().getRefreshRate();
+		if (fps <= 0) fps = 60;
+		int limit = minecraft.options.framerateLimit().get();
+		if (limit > 0 && limit < 260) fps = Math.min(fps, limit);
+		return 1.0e9 / fps;
 	}
 
 	/**
@@ -231,7 +294,9 @@ public final class FrameGen {
 			}
 			resolved = generated;
 			generatedCount++;
-			pace();
+			lastKind = GENERATED;
+			lastWaited = pace();
+			waited += lastWaited;
 			report();
 			return generated;
 		} catch (Throwable e) {
@@ -240,12 +305,10 @@ public final class FrameGen {
 		}
 	}
 
-	/** Waits until this generated frame has lasted its share of a real one. */
-	private static void pace() {
-		float pacing = SrvmrConfig.get().framePacing;
-		if (pacing <= 0.0F || realNanos <= 0.0) return;
+	/** Waits until this generated frame has lasted one frame of the screen; returns how long it waited. */
+	private static long pace() {
 		long begin = System.nanoTime();
-		long until = Math.min(frameStart + (long) (realNanos * pacing) - MARGIN, begin + MAX_WAIT);
+		long until = Math.min(frameStart + (long) screenNanos() - MARGIN, begin + MAX_WAIT);
 		while (true) {
 			long now = System.nanoTime();
 			long left = until - now;
@@ -257,15 +320,18 @@ public final class FrameGen {
 				Thread.onSpinWait();
 			}
 		}
-		waited += System.nanoTime() - begin;
+		return System.nanoTime() - begin;
 	}
 
 	private static void report() {
 		long now = System.nanoTime();
 		if (now - reportedAt < REPORT_EVERY) return;
-		Srvmr.LOGGER.info("[framegen] {} s: {} generated and {} real frames; a real frame took {} ms, a generated one waited {} ms",
-				TimeUnit.NANOSECONDS.toSeconds(now - reportedAt), generatedCount, realCount,
+		Srvmr.LOGGER.info("[framegen] {} s: {} generated and {} real frames ({} after the last real one, screen {} fps); "
+						+ "a real frame took {} ms, a generated one {} ms and waited {} ms",
+				TimeUnit.NANOSECONDS.toSeconds(now - reportedAt), generatedCount, realCount, planned,
+				Math.round(1.0e9 / screenNanos()),
 				String.format(Locale.ROOT, "%.1f", realNanos / 1.0e6),
+				String.format(Locale.ROOT, "%.1f", generatedNanos / 1.0e6),
 				String.format(Locale.ROOT, "%.1f", generatedCount == 0 ? 0.0 : waited / 1.0e6 / generatedCount));
 		reportedAt = now;
 		generatedCount = 0;

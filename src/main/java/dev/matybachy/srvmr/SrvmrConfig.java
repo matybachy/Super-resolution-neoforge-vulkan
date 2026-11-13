@@ -66,8 +66,8 @@ public final class SrvmrConfig {
 			"packDepthUpsideDown: whether a shader pack's depth has its rows the other way round from the picture.",
 			"handDepth: with a shader pack, depth below this is the hand, which moves with the camera.",
 			"frameGeneration: off, x2, x3, x4, x5 or x6 (experimental, only while DLSS runs): frames between the real ones, the last picture",
-			"  moved to where the camera is now and moving entities moved on by their own motion.",
-			"framePacing: 0.0-0.9, how long a generated frame lasts against a real one; 0 is fastest, higher is more even.");
+			"  moved to where the camera is now and moving entities moved on by their own motion. The most frames generated:",
+			"  fewer are, or none, where real frames keep up with the screen or a generated one would cost nearly as much.");
 
 	private static volatile SrvmrConfig instance;
 
@@ -82,7 +82,6 @@ public final class SrvmrConfig {
 	public final boolean packDepthUpsideDown;
 	public final float handDepth;
 	public final FrameGeneration frameGeneration;
-	public final float framePacing;
 
 	/** A copy to edit, for the settings page. */
 	public static final class Draft {
@@ -97,7 +96,6 @@ public final class SrvmrConfig {
 		public boolean packDepthUpsideDown;
 		public float handDepth;
 		public FrameGeneration frameGeneration;
-		public float framePacing;
 	}
 
 	private SrvmrConfig(Draft d) {
@@ -112,7 +110,6 @@ public final class SrvmrConfig {
 		this.packDepthUpsideDown = d.packDepthUpsideDown;
 		this.handDepth = d.handDepth;
 		this.frameGeneration = d.frameGeneration;
-		this.framePacing = Math.max(0.0F, Math.min(0.9F, d.framePacing));
 	}
 
 	public static SrvmrConfig get() {
@@ -139,7 +136,6 @@ public final class SrvmrConfig {
 		d.packDepthUpsideDown = this.packDepthUpsideDown;
 		d.handDepth = this.handDepth;
 		d.frameGeneration = this.frameGeneration;
-		d.framePacing = this.framePacing;
 		return d;
 	}
 
@@ -176,7 +172,6 @@ public final class SrvmrConfig {
 		d.packDepthUpsideDown = bool(p, "packDepthUpsideDown", true);
 		d.handDepth = number(p, "handDepth", 0.5625F);
 		d.frameGeneration = choice(p, "frameGeneration", FrameGeneration.OFF, FrameGeneration.class);
-		d.framePacing = number(p, "framePacing", 0.5F);
 		SrvmrConfig config = new SrvmrConfig(d);
 		// Every key written back, so the file always shows what there is to set.
 		if (!properties(config).equals(p)) write(config);
@@ -196,7 +191,6 @@ public final class SrvmrConfig {
 		out.setProperty("packDepthUpsideDown", Boolean.toString(config.packDepthUpsideDown));
 		out.setProperty("handDepth", Float.toString(config.handDepth));
 		out.setProperty("frameGeneration", config.frameGeneration.name().toLowerCase(Locale.ROOT));
-		out.setProperty("framePacing", Float.toString(config.framePacing));
 		return out;
 	}
 

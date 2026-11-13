@@ -72,7 +72,6 @@ public final class DlssPage {
 				}),
 				new OptionBlock(text("srvmr.block.framegen"), new Option<?>[] {
 						frameGeneration(),
-						framePacing(),
 				}),
 				new OptionBlock(text("srvmr.block.troubleshooting"), new Option<?>[] {
 						toggle("srvmr.option.jitter", value -> draft.jitter = value, () -> draft.jitter),
@@ -143,18 +142,6 @@ public final class DlssPage {
 		option.setTranslator(value -> Component.translatable("srvmr.framegen." + value.name().toLowerCase(java.util.Locale.ROOT)));
 		option.setTooltip(Component.translatable("srvmr.option.frameGeneration.tooltip"));
 		return option;
-	}
-
-	/** How long a generated frame lasts against a real one, in tens of per cent: 0 is the most frames, 90 the most even. */
-	private static Option<?> framePacing() {
-		return new RangeOption(Component.translatable("srvmr.option.framePacing"), 0, 90, 10,
-				value -> Component.translatable("srvmr.pacing.value", value),
-				value -> {
-					draft.framePacing = value / 100.0F;
-					edited = true;
-				},
-				() -> Math.round(draft.framePacing * 10.0F) * 10)
-				.setTooltip(Component.translatable("srvmr.option.framePacing.tooltip"));
 	}
 
 	private static Option<?> toggle(String key, java.util.function.Consumer<Boolean> set,
