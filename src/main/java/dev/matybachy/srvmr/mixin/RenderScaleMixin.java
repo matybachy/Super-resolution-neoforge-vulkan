@@ -28,4 +28,16 @@ public abstract class RenderScaleMixin {
 		}
 		return original.call(scale);
 	}
+
+	/**
+	 * VulkanMod Reforged sizes the picture as {@code round(size * scale / 100)}, which at 33 % of 2560x1440 is 845x475:
+	 * less than the third DLSS Ultra Performance is made for, and outside the range NGX lists for it ("845x475 for
+	 * 2560x1440 is outside the ranges NGX lists" in the log). At the lowest step the size is a third exactly, 853x480. The
+	 * scale is below 50 % only while DLSS is on ({@link #srvmr$ultraPerformance}), so nothing else changes.
+	 */
+	@WrapMethod(method = "scaleDimension")
+	private static int srvmr$exactThird(int size, int scale, Operation<Integer> original) {
+		if (RenderScale.clamp(scale) == LOWEST) return Math.max(1, Math.round(size / 3.0F));
+		return original.call(size, scale);
+	}
 }

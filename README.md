@@ -22,7 +22,8 @@ settings are untried.
 1. Build the jar (see [Building](#building); there is none to download) and put it in `mods`.
 2. In VulkanMod Reforged's Video Settings, on the **DLSS** page, turn DLSS on and set **Render Scale** below 100 %: 65-70 % for DLSS Quality,
    55-60 % Balanced, 45-50 % Performance, 33-40 % Ultra Performance. VulkanMod Reforged's own floor is 50 %; with DLSS on the mod lets the scale go
-   down to 33 % (`RenderScaleMixin`), and with DLSS off or failed the 50 % floor holds again. DLSS picks the mode that fits the scale unless one is
+   down to 33 % (`RenderScaleMixin`), where the picture is an exact third of the screen (853x480 of 2560x1440, not VulkanMod Reforged's rounded
+   845x475), and with DLSS off or failed the 50 % floor holds again. DLSS picks the mode that fits the scale unless one is
    chosen. The same Render Scale is on VulkanMod Reforged's own page, which shows 50 % at most for a lower scale.
 3. With a shader pack, turn the pack's own TAA off if it has one: DLSS does that job, and the two jitter the picture against each other. Complementary
    (option *Temporal Filtering*, which its detail quality *High* turns on) keeps at least 75 % of the last frame on Distant Horizons' terrain
