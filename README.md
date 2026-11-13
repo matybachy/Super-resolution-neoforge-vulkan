@@ -1,91 +1,100 @@
-# Super-resolution-neoforge-vulkan
+# Super Resolution VMR
 
-DLSS-only Super Resolution integration for Minecraft 1.21.1 NeoForge on VulkanMod Reforged.
+NVIDIA DLSS Super Resolution for [VulkanMod Reforged](https://github.com/TrulyRin/VulkanMod-Reforged) on Minecraft 1.21.1 NeoForge, as a mod of its own. It works with
+and without [Opal Compat](https://github.com/matybachy/opal-shaders-compat) shader packs. Nothing of VulkanMod Reforged or Opal Compat is patched or copied: the mod hooks
+them with mixins and reflection.
 
-## Source components
+Status: **alpha, never run.** It is built and checked statically; whether DLSS starts, and how the picture looks, is only known from the game.
 
-This repository tracks the renderer and Vulkan shader-pack compatibility source as submodules:
+## Requirements
 
-- `vmr`: VulkanMod Reforged, Minecraft 1.21.1 / NeoForge
-- `opalcompat`: Opal Compat, including the Vitrail Vulkan shader-pack path
+| | |
+|---|---|
+| Minecraft | 1.21.1, NeoForge 21.1 |
+| VulkanMod Reforged | exactly `0.3.5-ALPHA+1.21.1` |
+| GPU | NVIDIA GeForce RTX (DLSS runs nowhere else; elsewhere the mod stands aside) |
+| OS | Windows x64 |
+| Opal Compat | optional, 0.5.0-alpha or newer, for shader packs |
 
-Initialize them with:
+## Use
 
-```bash
-git submodule update --init --recursive
-```
+1. Put the jar in `mods`.
+2. In VulkanMod Reforged's Video Settings, on the **DLSS** page, turn DLSS on and set **Render Scale** below 100 %: 65-70 % for DLSS Quality,
+   55-60 % Balanced, 45-50 % Performance, 33-40 % Ultra Performance. VulkanMod Reforged's own floor is 50 %; with DLSS on the mod lets the scale go
+   down to 33 % (`RenderScaleMixin`), and with DLSS off or failed the 50 % floor holds again. DLSS picks the mode that fits the scale unless one is
+   chosen. The same Render Scale is on VulkanMod Reforged's own page, which shows 50 % at most for a lower scale.
+3. With a shader pack, turn the pack's own TAA off if it has one: DLSS does that job, and the two jitter the picture against each other.
 
-LibLibLib, Vectors, and Opal Shaders remain runtime dependencies and are not redistributed here.
-The upstream Super Resolution source is not bundled; this repository contains
-only the DLSS-specific port and retains its GPL-3.0-or-later license in
-`LICENSE-superresolution`.
+DLSS runs while the world is drawn at the Render Scale, which is when no screen is open. With a screen open (inventory, chat) VulkanMod Reforged draws at full
+size and DLSS waits.
 
-## DLSS integration status
+## How it works
 
-The repository now contains an isolated DLSS integration core in
-`src/main/java/dev/matybachy/superresolution`. It provides a DLSS-only
-upscaler lifecycle, resize and history reset handling, explicit
-native-resolution fallback, and the temporal inputs required by NGX.
+VulkanMod Reforged draws the world into a target of its Render Scale and, before the GUI, stretches it onto the swapchain
+(`DefaultMainPass.resolveScaledFramebufferToSwapchain`). This mod:
 
-`CameraMotionVectorPass` tracks previous/current view-projection matrices for
-the camera-only velocity path at the Opal Compat renderer seam. Entity and
-animated-object motion is not represented yet and may ghost during temporal
-accumulation.
+- adds the instance and device extensions DLSS needs when VulkanMod Reforged creates its Vulkan instance and device (`VulkanLifecycleMixin`,
+  `DeviceExtensionsMixin`), asking NGX which ones. Nothing of NVIDIA's is loaded without an NVIDIA driver, and nothing is added to the device of another
+  vendor's GPU;
+- moves the game's projection by a sub-pixel jitter each frame (`GameRendererJitterMixin`), a Halton (2, 3) sequence;
+- works out motion vectors and a depth for DLSS (`MotionPass`, a compute shader) from the depth of the world, the camera and the entities: every pixel is put back
+  where it was in the last upscaled frame, and a pixel inside the box of an entity that moved (`EntityMotion`) is moved back by as much as the entity moved;
+- takes the depth of the world from Opal Compat (`depthtex0`) with a pack, Distant Horizons' far terrain from Opal Compat's DH depth and the planes DH drew
+  with, and without a pack copies VulkanMod Reforged's depth just before the game clears it to draw the hand (with VulkanMod Reforged's own
+  `MainDepthSnapshot`); the hand gets no motion, since it moves with the camera;
+- in the resolve, has DLSS write a full-size picture from the scaled colour, the depth and the motion vectors, and binds that picture where VulkanMod Reforged
+  would bind the scaled colour (`DefaultMainPassMixin`). The GUI is drawn over it at full size, as before.
 
-When the DLSS JVM property is enabled, VMR registers the NGX Vulkan device
-extensions before device creation, Opal applies a Halton camera jitter to the
-projection, and the same jitter is passed to NGX.
+When VulkanMod Reforged shuts its Vulkan down, DLSS releases its feature and NGX first. Its feature and images are also released after 60 s without
+an upscaled frame (Render Scale back at 100 %), and after 120 frames in a row it could not upscale it waits 30 s before trying again. If the device cannot
+be created with DLSS's extensions, it is created again without them and DLSS stays off.
 
-The native bridge is implemented in `native/src/superresolution_dlss.cpp`.
-NVIDIA NGX headers, libraries, project identifiers, and DLLs are not
-redistributed. The renderer integration calls this core after the world pass,
-writes camera-only motion vectors from the scaled depth buffer, evaluates DLSS
-into a dedicated display-resolution target, and presents that target before
-native-resolution GUI rendering.
+Any failure turns DLSS off for the session and leaves the frame to VulkanMod Reforged. The log says what happened in lines starting with `[dlss]`; NGX's own log is
+in `srvmr/` in the game folder.
 
-`VulkanExtensionRegistrar` targets the added VMR
-`VulkanExtensionHooks` seam. NGX-discovered instance/device requirements must
-be registered before VMR initializes its Vulkan class; otherwise the core
-continues with the documented native-resolution fallback.
+## Settings
 
-## Native SDK setup
+On the DLSS page of VulkanMod Reforged's video settings, and in `config/srvmr.properties`, written at the first start and by the page. Changes
+from the page take effect at once; DLSS starts its history afresh with them.
 
-Build a private native library named `superresolution_dlss` against the NVIDIA
-NGX SDK and place it on the Java library path. With the SDK checkout at
-`C:\dev\DLSS`, configure the native build with:
+| Key | Default | |
+|---|---|---|
+| `enabled` | `true` | `false` leaves everything to VulkanMod Reforged |
+| `quality` | `auto` | `auto`, `quality`, `balanced`, `performance`, `ultra_performance`, `dlaa` |
+| `jitter` | `true` | the sub-pixel jitter; DLSS needs it for detail |
+| `invertJitterX`, `invertJitterY` | `false` | the sign of the jitter DLSS is told; try if the picture shimmers when standing still |
+| `invertMotionY` | `false` | the sign of the vertical motion; try if the picture smears when looking up and down |
+| `packDepth` | `forward` | how a pack's depth is stored: `forward`, `direct`, `reversed` |
+| `packDepthUpsideDown` | `true` | whether a pack's depth has its rows the other way round from the picture |
+| `vanillaDepth` | `direct` | how VulkanMod Reforged's own depth is stored |
+| `handDepth` | `0.5625` | with a pack, depth below this is the hand, which moves with the camera |
 
-```powershell
-cmake -S native -B native/build -DDLSS_SDK_DIR=C:/dev/DLSS
-cmake --build native/build --config Release
-```
+The jitter sign, the motion sign and the depth layouts are read from the code of VulkanMod Reforged and Opal Compat, not seen in a game; they are settings so that a
+wrong one can be fixed without a new build.
 
-The CMake file reads headers from `C:\dev\DLSS\include` and links the Windows
-x64 import library from `C:\dev\DLSS\lib\Windows_x86_64\x64`. It does not copy
-those files into this repository. At runtime, keep the matching NVIDIA NGX
-DLLs from `C:\dev\DLSS\lib\Windows_x86_64\rel` on the process `PATH` (or
-alongside the private bridge DLL), and put the built `superresolution_dlss.dll`
-on the Java library path. The bridge must initialize NGX
-with the application's Vulkan instance/device, query feature requirements
-before device creation, and translate the SDK resource/layout requirements
-into the VulkanMod command buffer.
+## Known limits
 
-Set `SUPERRESOLUTION_NGX_PROJECT_ID` to a project identifier authorized for
-this application. Do not reuse the upstream project's identifier. Do not copy
-NVIDIA SDK binaries or the upstream project's identifier into this repository.
-DLSS remains disabled, with a warning and native-resolution rendering, until
-the bridge and all required images are valid.
+- Entities move as a whole: mobs, players, items, arrows, minecarts, boats and Create's contraptions get their own motion, but what an entity does in place (a
+  turning head, swinging legs, a contraption that rotates) does not, and may leave a faint trail. Boxes are the hit box grown sideways and upwards by a margin, so
+  a little of what is right beside a moving entity moves with it. Only moving entities in view count, at most 256, nearest first.
+- Particles, falling rain and snow, and moving block entities (pistons) are not entities and get the motion of what is behind them.
+- Without a shader pack, Distant Horizons' far terrain is taken as lying at the far plane, which is a fraction of a pixel off while walking.
+- Only the exact VulkanMod Reforged version above.
 
-For Windows setup, `native/build-windows.ps1` builds the bridge and
-`native/run-with-dlss.ps1` can launch a Java profile with the bridge and NGX
-runtime directories on `PATH`; it requires the authorized project ID as a
-runtime parameter.
+## Building
 
-Enable the runtime bootstrap with the JVM property
-`-Dsuperresolution.dlss=true`; quality can be selected with
-`-Dsuperresolution.dlss.quality=QUALITY|BALANCED|PERFORMANCE|ULTRA_PERFORMANCE`.
-When using the patched VMR settings screen, the same enable, quality, and
-sharpness values are exposed under the Super Resolution page and written back
-to these properties. The settings page reinitializes the live resolver when
-applied.
-The same page exposes manual pre-exposure and exposure-scale values because
-the inspected Opal API does not publish an automatic scene-exposure value.
+The NVIDIA DLSS SDK is not in this repository, and nothing built from it may be committed: NVIDIA's licence does not allow the SDK to become subject to an
+open-source licence, and this repository is GPL. Jars built with DLSS are for the builder's own use.
+
+1. Get the [DLSS SDK](https://github.com/NVIDIA/DLSS) (headers, `lib/Windows_x86_64/x64/nvsdk_ngx_s.lib`, `lib/Windows_x86_64/rel/nvngx_dlss.dll`) and the
+   [Vulkan headers](https://github.com/KhronosGroup/Vulkan-Headers). Using the SDK means accepting NVIDIA's licence.
+2. Build the bridge (Visual Studio with C++ tools, CMake): `native\build-windows.cmd <DLSS SDK> <Vulkan-Headers> [JDK 21]`. See [native/README.md](native/README.md).
+3. `gradlew build -x test` with `dlssSdkDir` and `nativeBridge` in `gradle.properties` (or `-P`) pointing at the SDK and at `native/build/srvmr_ngx.dll`. Without
+   them the jar is built without DLSS and says so in the log.
+
+## Licence
+
+The mod's code: GPL-3.0-or-later ([LICENSE](LICENSE)). NVIDIA DLSS: NVIDIA RTX SDKs licence, carried in the jar next to the DLSS runtime. NVIDIA and DLSS are
+trademarks of NVIDIA Corporation. Not made by or with NVIDIA, the authors of VulkanMod Reforged or the authors of Super Resolution.
+
+The earlier work on `main` (VulkanMod Reforged and Opal Compat sources patched in place) is replaced here by mixins; it stays on `main`.

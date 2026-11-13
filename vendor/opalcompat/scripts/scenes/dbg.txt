@@ -1,5 +1,0 @@
-settle
-wait 20
-dump d
-wait 10
-shot dshot

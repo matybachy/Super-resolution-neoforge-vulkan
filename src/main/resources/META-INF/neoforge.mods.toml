@@ -1,0 +1,46 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+logoFile="srvmr_logo.png"
+authors="matybachy"
+credits="Uses NVIDIA DLSS (NVIDIA DLSS SDK, NVIDIA RTX SDKs License). NVIDIA and DLSS are trademarks of NVIDIA Corporation. Renderer: VulkanMod Reforged (LGPL-3.0). Not made by or with NVIDIA, the authors of VulkanMod Reforged or the authors of Super Resolution."
+description='''
+NVIDIA DLSS Super Resolution for VulkanMod Reforged. VulkanMod Reforged draws the world at its Render Scale; where it would stretch that picture to the screen, DLSS rebuilds it at full resolution. Works with and without Opal Compat shader packs. Needs an NVIDIA RTX graphics card on Windows; elsewhere it stands aside.
+'''
+
+[[mixins]]
+config="${mod_id}.mixins.json"
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="${neo_version_range}"
+    ordering="NONE"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="CLIENT"
+
+# Mixins reach into VulkanMod Reforged internals, so only the exact version this was built against is accepted.
+[[dependencies.${mod_id}]]
+    modId="vulkanmod"
+    type="required"
+    versionRange="[${vulkanmod_version}]"
+    ordering="AFTER"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="opalcompat"
+    type="optional"
+    versionRange="[0.5.0-alpha,)"
+    ordering="AFTER"
+    side="CLIENT"
