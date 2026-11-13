@@ -91,12 +91,14 @@ final class MotionPass implements AutoCloseable {
 			    float nearToFar = mode == 2 ? 1.0 - d : d;
 			    // Nothing of the world here: Distant Horizons' terrain may be, drawn with its own planes. Its depth gives
 			    // the distance along the view, and the game's z row turns that into the game's clip depth.
+			    float distantView = 0.0;
 			    if (pc.handCount.z != 0 && nearToFar >= 1.0) {
 			        float far = texelFetch(distantDepth, source, 0).r;
 			        if (far < 1.0) {
 			            float view = -pc.planes.y / ((far * 2.0 - 1.0) + pc.planes.x);
 			            z = (pc.planes.z * view + pc.planes.w) / -view;
 			            nearToFar = clamp(z * 0.5 + 0.5, 0.0, 1.0);
+			            distantView = view;
 			        }
 			    }
 			    bool hand = false;
@@ -105,7 +107,20 @@ final class MotionPass implements AutoCloseable {
 			    } else if (pc.handCount.x == 2) {
 			        hand = nearToFar < pc.jitterHandSign.z;
 			    }
-			    imageStore(depthOut, pixel, vec4(hand ? 0.0 : nearToFar, 0.0, 0.0, 0.0));
+			    // DLSS's depth. Without Distant Horizons, the game's own. With it, the far terrain lies past the game's far plane
+			    // and its depth above was clamped to 1.0, the sky's: DLSS saw one depth for all the far terrain and the sky, and
+			    // could not tell one far hill from the next or from the sky when deciding which history to throw away. Every
+			    // pixel's distance goes instead into one projection with the game's near plane and DH's far plane.
+			    float dlssDepth = nearToFar;
+			    if (pc.handCount.z != 0) {
+			        float nearPlane = pc.planes.w / (pc.planes.z - 1.0);
+			        float farPlane = pc.planes.y / (pc.planes.x + 1.0);
+			        float view = distantView < 0.0 ? distantView
+			                : (nearToFar < 1.0 ? -pc.planes.w / (z + pc.planes.z) : 0.0);
+			        dlssDepth = view < 0.0 && farPlane > nearPlane
+			                ? clamp(farPlane / (farPlane - nearPlane) * (1.0 + nearPlane / view), 0.0, 1.0) : 1.0;
+			    }
+			    imageStore(depthOut, pixel, vec4(hand ? 0.0 : dlssDepth, 0.0, 0.0, 0.0));
 			    vec2 motion = vec2(0.0);
 			    if (!hand) {
 			        vec2 ndc = vec2((float(pixel.x) + 0.5) / float(size.x) * 2.0 - 1.0,

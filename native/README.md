@@ -5,8 +5,15 @@ the command buffer and the images are VulkanMod Reforged's, and only their handl
 
 It is linked statically against `nvsdk_ngx_s.lib` from the DLSS SDK and the static Visual C++ runtime, so the DLL depends on nothing but Windows itself.
 
+The DLSS SDK and the Vulkan headers come from `get-sdk.sh` (Git Bash), which downloads the files the build uses into `../dlss-build-deps` next to the
+repository and prints the line below with the paths filled in:
+
+```bash
+bash native/get-sdk.sh
 ```
-native\build-windows.cmd C:\path\to\DLSS C:\path\to\Vulkan-Headers "C:\Program Files\Zulu\zulu-21"
+
+```
+native\build-windows.cmd C:\path\to\dlss-build-deps\DLSS C:\path\to\dlss-build-deps\Vulkan-Headers "C:\Program Files\Zulu\zulu-21"
 ```
 
 writes `native\build\srvmr_ngx.dll`. The script finds Visual Studio's C++ tools through `vswhere`, then runs CMake with the NMake generator.
