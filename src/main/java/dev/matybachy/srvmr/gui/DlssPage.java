@@ -37,6 +37,7 @@ public final class DlssPage {
 	private static SrvmrConfig.Draft draft;
 	private static boolean edited;
 	private static boolean scaleEdited;
+	private static boolean qualityEdited;
 
 	private DlssPage() {
 	}
@@ -56,6 +57,7 @@ public final class DlssPage {
 		draft = SrvmrConfig.get().draft();
 		edited = false;
 		scaleEdited = false;
+		qualityEdited = false;
 		return List.of(new OptionPage(text("srvmr.page"), new OptionBlock[] {
 				new OptionBlock("", new Option<?>[] {
 						new SwitchOption(Component.translatable("srvmr.option.enabled"),
@@ -67,6 +69,10 @@ public final class DlssPage {
 								.setTooltip(Component.translatable("srvmr.option.enabled.tooltip")),
 						renderScale(),
 						quality(),
+				}),
+				new OptionBlock(text("srvmr.block.framegen"), new Option<?>[] {
+						frameGeneration(),
+						framePacing(),
 				}),
 				new OptionBlock(text("srvmr.block.troubleshooting"), new Option<?>[] {
 						toggle("srvmr.option.jitter", value -> draft.jitter = value, () -> draft.jitter),
@@ -117,11 +123,38 @@ public final class DlssPage {
 				value -> {
 					draft.quality = value;
 					edited = true;
+					qualityEdited = true;
 				},
 				() -> draft.quality);
 		option.setTranslator(value -> Component.translatable("srvmr.quality." + value.name().toLowerCase(java.util.Locale.ROOT)));
 		option.setTooltip(Component.translatable("srvmr.option.quality.tooltip"));
 		return option;
+	}
+
+	/** Off, 2x to 6x: frames between the real ones, only while DLSS runs. */
+	private static Option<?> frameGeneration() {
+		CyclingOption<SrvmrConfig.FrameGeneration> option = new CyclingOption<>(
+				Component.translatable("srvmr.option.frameGeneration"), SrvmrConfig.FrameGeneration.values(),
+				value -> {
+					draft.frameGeneration = value;
+					edited = true;
+				},
+				() -> draft.frameGeneration);
+		option.setTranslator(value -> Component.translatable("srvmr.framegen." + value.name().toLowerCase(java.util.Locale.ROOT)));
+		option.setTooltip(Component.translatable("srvmr.option.frameGeneration.tooltip"));
+		return option;
+	}
+
+	/** How long a generated frame lasts against a real one, in tens of per cent: 0 is the most frames, 90 the most even. */
+	private static Option<?> framePacing() {
+		return new RangeOption(Component.translatable("srvmr.option.framePacing"), 0, 90, 10,
+				value -> Component.translatable("srvmr.pacing.value", value),
+				value -> {
+					draft.framePacing = value / 100.0F;
+					edited = true;
+				},
+				() -> Math.round(draft.framePacing * 10.0F) * 10)
+				.setTooltip(Component.translatable("srvmr.option.framePacing.tooltip"));
 	}
 
 	private static Option<?> toggle(String key, java.util.function.Consumer<Boolean> set,
@@ -151,6 +184,16 @@ public final class DlssPage {
 	/** Apply: the edited copy becomes the configuration; VulkanMod Reforged's own setting is saved where it changed. */
 	private static void apply() {
 		try {
+			// A mode chosen without touching Render Scale brings the scale it is made for, so that it is the mode DLSS
+			// runs: a mode the scale does not fit gives way to the one it does (DlssResolve.quality).
+			if (qualityEdited && !scaleEdited && draft != null && draft.enabled) {
+				int scale = scaleFor(draft.quality);
+				if (scale > 0 && scale != Initializer.CONFIG.renderScale) {
+					Initializer.CONFIG.renderScale = scale;
+					scaleEdited = true;
+				}
+			}
+			qualityEdited = false;
 			if (edited && draft != null) {
 				SrvmrConfig.apply(draft);
 				DlssResolve.settingsChanged();
@@ -165,6 +208,20 @@ public final class DlssPage {
 		} catch (Throwable e) {
 			Srvmr.LOGGER.warn("[dlss] cannot apply the DLSS settings", e);
 		}
+	}
+
+	/**
+	 * VulkanMod Reforged's step of 5 % nearest each mode's ratio (Quality 67 %, Balanced 58 %, Performance 50 %), and the
+	 * exact third for Ultra Performance; 0 for Auto and DLAA, which take the scale as it is.
+	 */
+	private static int scaleFor(SrvmrConfig.Quality quality) {
+		return switch (quality) {
+			case QUALITY -> 65;
+			case BALANCED -> 60;
+			case PERFORMANCE -> 50;
+			case ULTRA_PERFORMANCE -> ULTRA_SCALE;
+			default -> 0;
+		};
 	}
 
 	private static String text(String key) {

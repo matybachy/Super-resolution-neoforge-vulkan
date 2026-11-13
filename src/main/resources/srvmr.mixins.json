@@ -12,7 +12,10 @@
     "OptionScreenAccessor",
     "CrashReportFileNameMixin",
     "RenderScaleMixin",
-    "SamplerManagerMixin"
+    "SamplerManagerMixin",
+    "FrameGenMixin",
+    "OpalAfterLevelMixin",
+    "OptionsRenderScaleMixin"
   ],
   "injectors": {
     "defaultRequire": 1

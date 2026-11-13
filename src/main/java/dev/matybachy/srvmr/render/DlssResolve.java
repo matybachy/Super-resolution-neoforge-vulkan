@@ -37,7 +37,15 @@ public final class DlssResolve {
 	private static MotionPass motionPass;
 	private static VulkanImage motion;
 	private static VulkanImage depth;
-	private static VulkanImage output;
+	/** DLSS's last picture, which a generated frame moves ({@link FrameGen}). */
+	static VulkanImage output;
+	/** Per render pixel of the last upscaled frame: its point and its entity's move, for {@link FrameGen}. */
+	static VulkanImage place;
+	static VulkanImage moved;
+	/** The points of the upscaled frame before, which tell an entity's points from what stands in its box. */
+	private static VulkanImage previousPlace;
+	/** Whether {@link #place} holds the last frame DLSS upscaled. */
+	private static boolean placeWritten;
 	private static int imagesRenderWidth;
 	private static int imagesRenderHeight;
 	private static int imagesOutputWidth;
@@ -96,11 +104,9 @@ public final class DlssResolve {
 			Ngx.release(feature);
 			feature = 0L;
 			featureKey = 0;
+			FrameGen.release();
 			if (motion != null) {
-				motion.free();
-				depth.free();
-				output.free();
-				motion = null;
+				freeImages();
 			}
 			lastUpscale = 0L;
 			Srvmr.LOGGER.info("[dlss] DLSS unused for a while; its memory is released");
@@ -134,6 +140,7 @@ public final class DlssResolve {
 	/** A frame drawn for DLSS that VulkanMod Reforged never resolved: it counts as left, and the next starts afresh. */
 	static void unresolved() {
 		leave("VulkanMod Reforged did not resolve the frame");
+		FrameGen.forget();
 		DlssFrame.finish(false);
 		if (++leftInRow == GIVE_UP_AFTER) {
 			gaveUpAt = System.nanoTime();
@@ -144,6 +151,12 @@ public final class DlssResolve {
 
 	/** The upscaled picture to draw instead of the scaled colour, or null for VulkanMod Reforged's own. */
 	public static VulkanImage resolve(VkCommandBuffer cmd, Framebuffer scaled, SwapChain swapChain) {
+		// A generated frame drew no world: its picture is the last upscaled one, moved to where the camera is now.
+		if (FrameGen.levelSkipped()) return FrameGen.resolve(cmd, swapChain);
+		if (FrameGen.generating()) {
+			FrameGen.worldNotLeftOut();
+			return null;
+		}
 		if (!DlssFrame.planned) return null;
 		boolean done = false;
 		try {
@@ -155,6 +168,12 @@ public final class DlssResolve {
 			Ngx.giveUp();
 			return null;
 		} finally {
+			if (done) {
+				FrameGen.realUpscaled(DlssFrame.renderWidth, DlssFrame.renderHeight, DlssFrame.outputWidth,
+						DlssFrame.outputHeight, DlssFrame.cameraX(), DlssFrame.cameraY(), DlssFrame.cameraZ());
+			} else {
+				FrameGen.forget();
+			}
 			DlssFrame.finish(done);
 			if (done) {
 				upscaled++;
@@ -240,9 +259,19 @@ public final class DlssResolve {
 			if (far != null) Layouts.read(stack, cmd, far);
 			Layouts.transition(stack, cmd, motion, VK_IMAGE_LAYOUT_GENERAL);
 			Layouts.transition(stack, cmd, depth, VK_IMAGE_LAYOUT_GENERAL);
+			// The last upscaled frame's points become the previous ones; this frame's go into the other image.
+			boolean previousValid = placeWritten && !reset;
+			VulkanImage swap = previousPlace;
+			previousPlace = place;
+			place = swap;
+			placeWritten = false;
+			// Read by a generated frame in GENERAL too: they stay in it.
+			Layouts.transition(stack, cmd, place, VK_IMAGE_LAYOUT_GENERAL);
+			Layouts.transition(stack, cmd, previousPlace, VK_IMAGE_LAYOUT_GENERAL);
+			Layouts.transition(stack, cmd, moved, VK_IMAGE_LAYOUT_GENERAL);
 			motionPass.record(stack, cmd, world, hand, handMode, distant, pack && config.packDepthUpsideDown,
-					pack ? config.packDepth : config.vanillaDepth, config.handDepth, motion, depth,
-					DlssFrame.jitterNdcX(), DlssFrame.jitterNdcY(), config.invertMotionY);
+					pack ? config.packDepth : config.vanillaDepth, config.handDepth, motion, depth, place, previousPlace,
+					previousValid, moved, DlssFrame.jitterNdcX(), DlssFrame.jitterNdcY(), config.invertMotionY);
 			restore(stack, cmd, world, worldLayout);
 			if (hand != world) restore(stack, cmd, hand, handLayout);
 			if (far != null) restore(stack, cmd, far, farLayout);
@@ -273,6 +302,7 @@ public final class DlssResolve {
 				return null;
 			}
 		}
+		placeWritten = true;
 		return output;
 	}
 
@@ -282,6 +312,7 @@ public final class DlssResolve {
 	 */
 	public static void shutdown() {
 		TextureBias.shutdown();
+		FrameGen.shutdown();
 		try {
 			if (feature == 0L && motionPass == null && Ngx.failed()) return;
 			Vulkan.waitIdle();
@@ -310,21 +341,44 @@ public final class DlssResolve {
 		return null;
 	}
 
+	/** With the device idle. */
+	private static void freeImages() {
+		motion.free();
+		depth.free();
+		output.free();
+		place.free();
+		previousPlace.free();
+		moved.free();
+		motion = null;
+		depth = null;
+		output = null;
+		place = null;
+		previousPlace = null;
+		moved = null;
+		placeWritten = false;
+	}
+
 	/** The motion, depth and output images at their sizes; made again, with the device idle, when a size changes. */
 	private static void images(int renderWidth, int renderHeight, int outputWidth, int outputHeight) {
 		if (motion != null && renderWidth == imagesRenderWidth && renderHeight == imagesRenderHeight
 				&& outputWidth == imagesOutputWidth && outputHeight == imagesOutputHeight) return;
+		// Generated frames move the last picture: with new images there is none yet.
+		FrameGen.forget();
 		if (motion != null) {
 			Vulkan.waitIdle();
-			motion.free();
-			depth.free();
-			output.free();
-			motion = null;
+			freeImages();
 		}
 		int storage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 		motion = VulkanImage.builder(renderWidth, renderHeight).setFormat(VK_FORMAT_R16G16B16A16_SFLOAT)
 				.setUsage(storage).setLinearFiltering(false).setClamp(true).createVulkanImage();
 		depth = VulkanImage.builder(renderWidth, renderHeight).setFormat(VK_FORMAT_R32_SFLOAT)
+				.setUsage(storage).setLinearFiltering(false).setClamp(true).createVulkanImage();
+		place = VulkanImage.builder(renderWidth, renderHeight).setFormat(VK_FORMAT_R32G32B32A32_SFLOAT)
+				.setUsage(storage).setLinearFiltering(false).setClamp(true).createVulkanImage();
+		previousPlace = VulkanImage.builder(renderWidth, renderHeight).setFormat(VK_FORMAT_R32G32B32A32_SFLOAT)
+				.setUsage(storage).setLinearFiltering(false).setClamp(true).createVulkanImage();
+		placeWritten = false;
+		moved = VulkanImage.builder(renderWidth, renderHeight).setFormat(VK_FORMAT_R16G16B16A16_SFLOAT)
 				.setUsage(storage).setLinearFiltering(false).setClamp(true).createVulkanImage();
 		output = VulkanImage.builder(outputWidth, outputHeight).setFormat(VK_FORMAT_R8G8B8A8_UNORM)
 				.setUsage(storage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)

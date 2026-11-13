@@ -76,9 +76,28 @@ from the page take effect at once; DLSS starts its history afresh with them.
 | `packDepthUpsideDown` | `true` | whether a pack's depth has its rows the other way round from the picture |
 | `vanillaDepth` | `direct` | how VulkanMod Reforged's own depth is stored |
 | `handDepth` | `0.5625` | with a pack, depth below this is the hand, which moves with the camera |
+| `frameGeneration` | `off` | `off`, `x2` to `x6`: generated frames between the real ones (experimental, see below) |
+| `framePacing` | `0.5` | 0.0-0.9: how long a generated frame lasts against a real one; 0 gives the most frames, higher is more even |
 
 The jitter sign, the motion sign and the depth layouts are read from the code of VulkanMod Reforged and Opal Compat, not seen in a game; they are settings so that a
 wrong one can be fixed without a new build.
+
+## Frame generation (experimental)
+
+On the DLSS page, **Frame Generation** 2x to 6x shows one to five frames between the real ones. A generated frame draws no world: the game
+sets its camera up, but `LevelRenderer.renderLevel`, the hand and a shader pack's passes are left out (`FrameGenMixin`, `OpalAfterLevelMixin`),
+and where VulkanMod Reforged stretches the world onto the swapchain, DLSS's last picture is moved to this frame's camera (`FrameGen`,
+`FrameGenPass`). `MotionPass` keeps every render pixel's point and its entity's move; a generated frame takes each point to the new camera,
+a moving entity's points by the share of its last move the time since that frame makes (only points the frame before saw where the entity
+was, so that what stands in the entity's box keeps still), keeps the nearest in each cell of a grid the size of
+the render, and fills what the last frame did not see from the farthest of the nearest cells around it. The GUI is drawn as on every frame.
+
+- The processor is spared the world on generated frames, and the camera moves at the full frame rate.
+- Spinning parts (Create's shafts and cogs), water, particles and animated textures keep the pace of the real frames. Nothing is generated
+  while riding, after the camera jumps, or while DLSS does not run.
+- **Frame Pacing** (50 %): how long a generated frame lasts against a real one. 0 % gives the most frames, but long and short ones in turn.
+- Chunks are built and uploaded in real frames only, so the world loads more slowly with frame generation on.
+- The log says `[framegen]` every 10 s: generated and real frames, how long a real frame took, how long a generated one waited.
 
 ## Known limits
 
