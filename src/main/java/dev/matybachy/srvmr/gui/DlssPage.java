@@ -70,9 +70,6 @@ public final class DlssPage {
 						renderScale(),
 						quality(),
 				}),
-				new OptionBlock(text("srvmr.block.framegen"), new Option<?>[] {
-						frameGeneration(),
-				}),
 				new OptionBlock(text("srvmr.block.troubleshooting"), new Option<?>[] {
 						toggle("srvmr.option.jitter", value -> draft.jitter = value, () -> draft.jitter),
 						toggle("srvmr.option.invertJitterX", value -> draft.invertJitterX = value, () -> draft.invertJitterX),
@@ -127,20 +124,6 @@ public final class DlssPage {
 				() -> draft.quality);
 		option.setTranslator(value -> Component.translatable("srvmr.quality." + value.name().toLowerCase(java.util.Locale.ROOT)));
 		option.setTooltip(Component.translatable("srvmr.option.quality.tooltip"));
-		return option;
-	}
-
-	/** Off, 2x to 6x: frames between the real ones, only while DLSS runs. */
-	private static Option<?> frameGeneration() {
-		CyclingOption<SrvmrConfig.FrameGeneration> option = new CyclingOption<>(
-				Component.translatable("srvmr.option.frameGeneration"), SrvmrConfig.FrameGeneration.values(),
-				value -> {
-					draft.frameGeneration = value;
-					edited = true;
-				},
-				() -> draft.frameGeneration);
-		option.setTranslator(value -> Component.translatable("srvmr.framegen." + value.name().toLowerCase(java.util.Locale.ROOT)));
-		option.setTooltip(Component.translatable("srvmr.option.frameGeneration.tooltip"));
 		return option;
 	}
 

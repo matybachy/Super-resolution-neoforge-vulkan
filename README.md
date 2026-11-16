@@ -23,7 +23,9 @@ settings are untried.
 2. In VulkanMod Reforged's Video Settings, on the **DLSS** page, turn DLSS on and set **Render Scale** below 100 %: 65-70 % for DLSS Quality,
    55-60 % Balanced, 45-50 % Performance, 33-40 % Ultra Performance. VulkanMod Reforged's own floor is 50 %; with DLSS on the mod lets the scale go
    down to 33 % (`RenderScaleMixin`), where the picture is an exact third of the screen (853x480 of 2560x1440, not VulkanMod Reforged's rounded
-   845x475), and with DLSS off or failed the 50 % floor holds again. DLSS picks the mode that fits the scale unless one is
+   845x475), and with DLSS off or failed the 50 % floor holds again. VulkanMod Reforged's own Render Scale slider starts at 30 % too while DLSS
+   is on (`OptionsRenderScaleMixin`): from 50 % its widget took the clamped value as a change and any Apply wrote 50 % back. Choosing a DLSS mode
+   without touching Render Scale sets the scale the mode is made for (Quality 65 %, Balanced 60 %, Performance 50 %, Ultra Performance 33 %). DLSS picks the mode that fits the scale unless one is
    chosen. The same Render Scale is on VulkanMod Reforged's own page, which shows 50 % at most for a lower scale.
 3. With a shader pack, turn the pack's own TAA off if it has one: DLSS does that job, and the two jitter the picture against each other. Complementary
    (option *Temporal Filtering*, which its detail quality *High* turns on) keeps at least 75 % of the last frame on Distant Horizons' terrain
@@ -76,32 +78,9 @@ from the page take effect at once; DLSS starts its history afresh with them.
 | `packDepthUpsideDown` | `true` | whether a pack's depth has its rows the other way round from the picture |
 | `vanillaDepth` | `direct` | how VulkanMod Reforged's own depth is stored |
 | `handDepth` | `0.5625` | with a pack, depth below this is the hand, which moves with the camera |
-| `frameGeneration` | `off` | `off`, `x2` to `x6`: generated frames between the real ones (experimental, see below) |
 
 The jitter sign, the motion sign and the depth layouts are read from the code of VulkanMod Reforged and Opal Compat, not seen in a game; they are settings so that a
 wrong one can be fixed without a new build.
-
-## Frame generation (experimental)
-
-On the DLSS page, **Frame Generation** 2x to 6x shows one to five frames between the real ones. A generated frame draws no world: the game
-sets its camera up, but `LevelRenderer.renderLevel`, the hand and a shader pack's passes are left out (`FrameGenMixin`, `OpalAfterLevelMixin`),
-and where VulkanMod Reforged stretches the world onto the swapchain, DLSS's last picture is moved to this frame's camera (`FrameGen`,
-`FrameGenPass`). `MotionPass` keeps every render pixel's point and its entity's move; a generated frame takes each point to the new camera,
-a moving entity's points by the share of its last move the time since that frame makes (only points the frame before saw where the entity
-was, so that what stands in the entity's box keeps still), keeps the nearest in each cell of a grid the size of
-the render, and fills what the last frame did not see from the farthest of the nearest cells around it. The GUI is drawn as on every frame.
-
-- The processor is spared the world on generated frames, and the camera moves at the full frame rate.
-- Spinning parts (Create's shafts and cogs), water, particles and animated textures keep the pace of the real frames. Nothing is generated
-  while riding, after the camera jumps, or while DLSS does not run.
-- 2x to 6x is the most. How many frames are generated is measured after every real frame: none while the real frames keep up with the
-  screen (its refresh rate, or the game's frame limit if lower), only as many as bring the frame rate up to it, and none while a generated
-  frame costs more than 60 % of a real one: it skips the world on the processor, but it still waits for what the graphics card has not
-  finished of the real frame before. One is generated every 3 s to see whether that changed. A generated frame lasts one frame of the
-  screen, so they come evenly. (Generating a fixed number regardless left 21 real frames a second at 6x in a pack bound by the card,
-  and the hand, held items and entities moved at that rate.)
-- Chunks are built and uploaded in real frames only, so the world loads more slowly with frame generation on.
-- The log says `[framegen]` every 10 s: generated and real frames, how long a real frame took, how long a generated one waited.
 
 ## Known limits
 

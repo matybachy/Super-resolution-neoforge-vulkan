@@ -13,8 +13,6 @@
     "CrashReportFileNameMixin",
     "RenderScaleMixin",
     "SamplerManagerMixin",
-    "FrameGenMixin",
-    "OpalAfterLevelMixin",
     "OptionsRenderScaleMixin"
   ],
   "injectors": {

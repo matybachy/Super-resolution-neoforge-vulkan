@@ -44,17 +44,6 @@ public final class SrvmrConfig {
 		}
 	}
 
-	/** Frames shown between two real ones, made by moving the last picture to where the camera is now. */
-	public enum FrameGeneration {
-		OFF(0), X2(1), X3(2), X4(3), X5(4), X6(5);
-
-		public final int extra;
-
-		FrameGeneration(int extra) {
-			this.extra = extra;
-		}
-	}
-
 	private static final String HEADER = String.join("\n",
 			"Super Resolution VMR: NVIDIA DLSS on VulkanMod Reforged. Also on the DLSS page of VulkanMod Reforged's video settings.",
 			"DLSS runs while VulkanMod Reforged's Render Scale is below 100 % (steps of 5 %; below 50 % only with DLSS on).",
@@ -64,10 +53,7 @@ public final class SrvmrConfig {
 			"invertJitterX / invertJitterY / invertMotionY: if the picture shimmers or smears when the camera moves.",
 			"packDepth / vanillaDepth: forward, direct or reversed; how depth is stored with and without a shader pack.",
 			"packDepthUpsideDown: whether a shader pack's depth has its rows the other way round from the picture.",
-			"handDepth: with a shader pack, depth below this is the hand, which moves with the camera.",
-			"frameGeneration: off, x2, x3, x4, x5 or x6 (experimental, only while DLSS runs): frames between the real ones, the last picture",
-			"  moved to where the camera is now and moving entities moved on by their own motion. The most frames generated:",
-			"  fewer are, or none, where real frames keep up with the screen or a generated one would cost nearly as much.");
+			"handDepth: with a shader pack, depth below this is the hand, which moves with the camera.");
 
 	private static volatile SrvmrConfig instance;
 
@@ -81,7 +67,6 @@ public final class SrvmrConfig {
 	public final DepthMode vanillaDepth;
 	public final boolean packDepthUpsideDown;
 	public final float handDepth;
-	public final FrameGeneration frameGeneration;
 
 	/** A copy to edit, for the settings page. */
 	public static final class Draft {
@@ -95,7 +80,6 @@ public final class SrvmrConfig {
 		public DepthMode vanillaDepth;
 		public boolean packDepthUpsideDown;
 		public float handDepth;
-		public FrameGeneration frameGeneration;
 	}
 
 	private SrvmrConfig(Draft d) {
@@ -109,7 +93,6 @@ public final class SrvmrConfig {
 		this.vanillaDepth = d.vanillaDepth;
 		this.packDepthUpsideDown = d.packDepthUpsideDown;
 		this.handDepth = d.handDepth;
-		this.frameGeneration = d.frameGeneration;
 	}
 
 	public static SrvmrConfig get() {
@@ -135,7 +118,6 @@ public final class SrvmrConfig {
 		d.vanillaDepth = this.vanillaDepth;
 		d.packDepthUpsideDown = this.packDepthUpsideDown;
 		d.handDepth = this.handDepth;
-		d.frameGeneration = this.frameGeneration;
 		return d;
 	}
 
@@ -171,7 +153,6 @@ public final class SrvmrConfig {
 		d.vanillaDepth = choice(p, "vanillaDepth", DepthMode.DIRECT, DepthMode.class);
 		d.packDepthUpsideDown = bool(p, "packDepthUpsideDown", true);
 		d.handDepth = number(p, "handDepth", 0.5625F);
-		d.frameGeneration = choice(p, "frameGeneration", FrameGeneration.OFF, FrameGeneration.class);
 		SrvmrConfig config = new SrvmrConfig(d);
 		// Every key written back, so the file always shows what there is to set.
 		if (!properties(config).equals(p)) write(config);
@@ -190,7 +171,6 @@ public final class SrvmrConfig {
 		out.setProperty("vanillaDepth", config.vanillaDepth.name().toLowerCase(Locale.ROOT));
 		out.setProperty("packDepthUpsideDown", Boolean.toString(config.packDepthUpsideDown));
 		out.setProperty("handDepth", Float.toString(config.handDepth));
-		out.setProperty("frameGeneration", config.frameGeneration.name().toLowerCase(Locale.ROOT));
 		return out;
 	}
 
