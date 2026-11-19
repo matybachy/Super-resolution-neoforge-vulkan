@@ -150,3 +150,6 @@ The mod's code: GPL-3.0-or-later ([LICENSE](LICENSE)). NVIDIA DLSS: NVIDIA RTX S
 trademarks of NVIDIA Corporation. Not made by or with NVIDIA, the authors of VulkanMod Reforged or the authors of Super Resolution.
 
 The earlier work on `main` (VulkanMod Reforged and Opal Compat sources patched in place) is replaced here by mixins; it stays on `main`.
+<img width="1947" height="353" alt="image" src="https://github.com/user-attachments/assets/1ebe570a-3f9b-4497-a196-fd420f68ad3b" />
+<img width="1962" height="964" alt="image" src="https://github.com/user-attachments/assets/e57adc14-8f80-4333-b805-f27b59b313b5" />
+
