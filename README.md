@@ -1,3 +1,6 @@
+<img width="1962" height="964" alt="image" src="https://github.com/user-attachments/assets/d2388fc8-2270-450c-b9fb-51181630239f" />
+<img width="1947" height="353" alt="image" src="https://github.com/user-attachments/assets/ddcc9bdd-49e3-457b-b61e-8071270d50a9" />
+
 # Super Resolution VMR
 
 NVIDIA DLSS Super Resolution for [VulkanMod Reforged](https://github.com/TrulyRin/VulkanMod-Reforged) on Minecraft 1.21.1 NeoForge, as a mod of its own. It works with
@@ -150,8 +153,6 @@ The mod's code: GPL-3.0-or-later ([LICENSE](LICENSE)). NVIDIA DLSS: NVIDIA RTX S
 trademarks of NVIDIA Corporation. Not made by or with NVIDIA, the authors of VulkanMod Reforged or the authors of Super Resolution.
 
 The earlier work on `main` (VulkanMod Reforged and Opal Compat sources patched in place) is replaced here by mixins; it stays on `main`.
-<img width="1962" height="964" alt="image" src="https://github.com/user-attachments/assets/d2388fc8-2270-450c-b9fb-51181630239f" />
-<img width="1947" height="353" alt="image" src="https://github.com/user-attachments/assets/ddcc9bdd-49e3-457b-b61e-8071270d50a9" />
 
 
 
