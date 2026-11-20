@@ -3,6 +3,8 @@ package dev.matybachy.srvmr.render;
 import dev.matybachy.srvmr.Srvmr;
 import dev.matybachy.srvmr.SrvmrConfig;
 import dev.matybachy.srvmr.ngx.Ngx;
+import net.vulkanmod.Initializer;
+import net.vulkanmod.config.RenderScale;
 import net.vulkanmod.vulkan.Synchronization;
 import net.vulkanmod.vulkan.Vulkan;
 import net.vulkanmod.vulkan.device.DeviceManager;
@@ -85,13 +87,19 @@ public final class DlssResolve {
 	}
 
 	/**
-	 * At the start of each frame of the world: DLSS's feature and images, unused for {@link #UNUSED_FOR} (the Render Scale
-	 * back at 100 %, DLSS given up), are let go of. Some hundred MB of video memory at 1440p.
+	 * At the start of each frame of the world: DLSS's feature and images, unused for {@link #UNUSED_FOR} where DLSS cannot
+	 * run (the Render Scale back at 100 %, DLSS off or given up), are let go of. Some hundred MB of video memory at 1440p.
+	 * <p>
+	 * A screen open over the world (the inventory, chat, the pause menu) is not such a case. VulkanMod Reforged draws at
+	 * full size under it and DLSS waits, but it is wanted again the frame the screen closes, and letting it go after a
+	 * minute had that frame make the feature, wait for the device and make the images again: a stall of some 40 ms on
+	 * leaving a screen that stayed open a while. The feature is kept for as long as the Render Scale is one DLSS works at.
 	 */
 	public static void collect() {
 		try {
 			if (feature == 0L && motion == null) return;
 			if (lastUpscale != 0L && System.nanoTime() - lastUpscale < UNUSED_FOR) return;
+			if (stillWanted()) return;
 			Vulkan.waitIdle();
 			Ngx.release(feature);
 			feature = 0L;
@@ -107,6 +115,15 @@ public final class DlssResolve {
 		} catch (Throwable e) {
 			Srvmr.LOGGER.warn("[dlss] cannot release DLSS's memory", e);
 		}
+	}
+
+	/**
+	 * Whether DLSS would upscale again as soon as the world is drawn without a screen over it: it is on and working, the
+	 * Render Scale is below 100 %, and the last sizes it was drawn for were not given up on.
+	 */
+	private static boolean stillWanted() {
+		return SrvmrConfig.get().enabled && !Ngx.failed() && Initializer.CONFIG.renderScale < RenderScale.MAX
+				&& leftInRow < GIVE_UP_AFTER;
 	}
 
 	private static boolean unfit(int key) {

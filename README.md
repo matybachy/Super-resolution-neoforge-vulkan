@@ -59,8 +59,9 @@ VulkanMod Reforged draws the world into a target of its Render Scale and, before
   would bind the scaled colour (`DefaultMainPassMixin`). The GUI is drawn over it at full size, as before.
 
 When VulkanMod Reforged shuts its Vulkan down, DLSS releases its feature and NGX first. Its feature and images are also released after 60 s without
-an upscaled frame (Render Scale back at 100 %), and after 120 frames in a row it could not upscale it waits 30 s before trying again. If the device cannot
-be created with DLSS's extensions, it is created again without them and DLSS stays off.
+an upscaled frame where DLSS cannot run (Render Scale back at 100 %, DLSS off), but not while a screen is open over the world: they are needed again
+the moment it closes, and making them again then stalled that frame for some 40 ms. After 120 frames in a row it could not upscale it waits 30 s before
+trying again. If the device cannot be created with DLSS's extensions, it is created again without them and DLSS stays off.
 
 Any failure turns DLSS off for the session and leaves the frame to VulkanMod Reforged. The log says what happened in lines starting with `[dlss]`; NGX's own log is
 in `srvmr/` in the game folder.
